@@ -63,7 +63,7 @@ export default function ScoreCard({
                   className={`w-full aspect-square rounded-lg ${display.bg} flex items-center justify-center`}
                 >
                   <span
-                    className="text-white text-xl font-bold"
+                    className="text-white text-3xl font-bold"
                     style={{ fontFamily: "'Caveat', cursive" }}
                   >
                     {hole.strokes}

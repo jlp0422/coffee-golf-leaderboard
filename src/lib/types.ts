@@ -55,3 +55,71 @@ export interface PlayerStats {
     { average: number; best: number; totalRounds: number }
   >;
 }
+
+export type TournamentFormat = "stroke_play" | "match_play" | "best_ball" | "skins";
+export type TournamentStatus = "upcoming" | "active" | "completed";
+export type GroupRole = "owner" | "admin" | "member";
+
+export const FORMAT_DISPLAY: Record<TournamentFormat, { label: string; description: string }> = {
+  stroke_play: {
+    label: "Stroke Play",
+    description: "Lowest cumulative total strokes wins",
+  },
+  match_play: {
+    label: "Match Play",
+    description: "Head-to-head, compare scores by color each day",
+  },
+  best_ball: {
+    label: "Best Ball",
+    description: "Team event — best score per color counts",
+  },
+  skins: {
+    label: "Skins",
+    description: "Win a color outright (no ties) to win the skin",
+  },
+};
+
+export interface Group {
+  id: string;
+  name: string;
+  created_by: string;
+  invite_code: string;
+  created_at: string;
+}
+
+export interface GroupMember {
+  group_id: string;
+  user_id: string;
+  role: GroupRole;
+  joined_at: string;
+  profiles?: Profile;
+}
+
+export interface Tournament {
+  id: string;
+  group_id: string;
+  name: string;
+  format: TournamentFormat;
+  start_date: string;
+  end_date: string;
+  team_size: number;
+  status: TournamentStatus;
+  created_by: string;
+  created_at: string;
+}
+
+export interface TournamentParticipant {
+  tournament_id: string;
+  user_id: string;
+  team_id: number | null;
+  profiles?: Profile;
+}
+
+export interface LeaderboardEntry {
+  user_id: string;
+  display_name: string;
+  totalStrokes: number;
+  roundsPlayed: number;
+  average: number;
+  bestRound: number;
+}

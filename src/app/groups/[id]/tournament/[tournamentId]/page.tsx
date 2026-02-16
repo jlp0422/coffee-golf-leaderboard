@@ -1,0 +1,292 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  getTournamentStandings,
+  joinTournament,
+  leaveTournament,
+  getTournamentParticipants,
+} from "../../../actions";
+import { FORMAT_DISPLAY, type TournamentFormat } from "@/lib/types";
+import { createClient } from "@/lib/supabase/client";
+
+interface StandingEntry {
+  user_id: string;
+  display_name: string;
+  team_id: number | null;
+  score: number;
+  rounds_played: number;
+  detail: string;
+}
+
+interface TournamentData {
+  id: string;
+  group_id: string;
+  name: string;
+  format: TournamentFormat;
+  start_date: string;
+  end_date: string;
+  team_size: number;
+  status: string;
+}
+
+export default function TournamentDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const groupId = params.id as string;
+  const tournamentId = params.tournamentId as string;
+
+  const [tournament, setTournament] = useState<TournamentData | null>(null);
+  const [standings, setStandings] = useState<StandingEntry[]>([]);
+  const [isParticipant, setIsParticipant] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [teamId, setTeamId] = useState<number>(1);
+
+  const load = useCallback(async () => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    setCurrentUserId(user?.id || null);
+
+    const [standingsData, participants] = await Promise.all([
+      getTournamentStandings(tournamentId),
+      getTournamentParticipants(tournamentId),
+    ]);
+
+    if (standingsData) {
+      setTournament(standingsData.tournament as TournamentData);
+      setStandings(standingsData.standings as StandingEntry[]);
+    }
+
+    if (user && participants) {
+      setIsParticipant(
+        participants.some(
+          (p: { user_id: string }) => p.user_id === user.id
+        )
+      );
+    }
+
+    setLoading(false);
+  }, [tournamentId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleJoin = async () => {
+    setActionLoading(true);
+    const result = await joinTournament(
+      tournamentId,
+      tournament?.team_size && tournament.team_size > 1 ? teamId : undefined
+    );
+    if (result.error) {
+      alert(result.error);
+    } else {
+      await load();
+    }
+    setActionLoading(false);
+  };
+
+  const handleLeave = async () => {
+    if (!confirm("Leave this tournament?")) return;
+    setActionLoading(true);
+    const result = await leaveTournament(tournamentId);
+    if (result.error) {
+      alert(result.error);
+    } else {
+      await load();
+    }
+    setActionLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+        <div className="text-center py-12 text-green-800/40">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!tournament) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-8 md:py-12 text-center">
+        <div className="text-5xl mb-4">&#128683;</div>
+        <p className="text-green-800/60">Tournament not found</p>
+        <Link
+          href={`/groups/${groupId}`}
+          className="text-green-700 hover:text-green-900 text-sm mt-4 inline-block"
+        >
+          &larr; Back to group
+        </Link>
+      </div>
+    );
+  }
+
+  const formatInfo = FORMAT_DISPLAY[tournament.format];
+  const isTeamFormat = tournament.team_size > 1;
+  const scoreLabel =
+    tournament.format === "match_play"
+      ? "Pts"
+      : tournament.format === "skins"
+      ? "Skins"
+      : "Strokes";
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+      <Link
+        href={`/groups/${groupId}`}
+        className="text-green-700 hover:text-green-900 text-sm mb-4 inline-block"
+      >
+        &larr; Back to group
+      </Link>
+
+      {/* Tournament header */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <h1
+            className="text-2xl font-bold text-green-900"
+            style={{ fontFamily: "Georgia, serif" }}
+          >
+            {tournament.name}
+          </h1>
+          <span
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+              tournament.status === "active"
+                ? "bg-green-100 text-green-700"
+                : tournament.status === "upcoming"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            {tournament.status}
+          </span>
+        </div>
+        <div className="text-sm text-green-800/60">
+          {formatInfo?.label} &bull;{" "}
+          {new Date(tournament.start_date + "T00:00:00").toLocaleDateString(
+            "en-US",
+            { month: "short", day: "numeric" }
+          )}{" "}
+          &ndash;{" "}
+          {new Date(tournament.end_date + "T00:00:00").toLocaleDateString(
+            "en-US",
+            { month: "short", day: "numeric", year: "numeric" }
+          )}
+        </div>
+        <div className="text-xs text-green-800/40 mt-1">
+          {formatInfo?.description}
+        </div>
+      </div>
+
+      {/* Join/Leave */}
+      {!isParticipant ? (
+        <div className="bg-white rounded-xl border border-green-900/10 p-4 mb-6">
+          <p className="text-sm text-green-800/60 mb-3">
+            Join this tournament to compete!
+          </p>
+          {isTeamFormat && (
+            <div className="mb-3">
+              <label className="block text-xs font-medium text-green-800 mb-1">
+                Team Number
+              </label>
+              <select
+                value={teamId}
+                onChange={(e) => setTeamId(parseInt(e.target.value))}
+                className="w-full px-3 py-2 border border-green-900/20 rounded-lg bg-white text-green-900 text-sm"
+              >
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((t) => (
+                  <option key={t} value={t}>
+                    Team {t}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            onClick={handleJoin}
+            disabled={actionLoading}
+            className="w-full py-2.5 bg-green-800 hover:bg-green-900 text-white rounded-xl font-medium text-sm transition-colors disabled:opacity-50"
+          >
+            {actionLoading ? "Joining..." : "Join Tournament"}
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between bg-green-50 rounded-xl border border-green-200 px-4 py-3 mb-6">
+          <span className="text-sm text-green-700 font-medium">
+            &#9989; You&apos;re in this tournament
+          </span>
+          <button
+            onClick={handleLeave}
+            disabled={actionLoading}
+            className="text-xs text-red-500 hover:text-red-700"
+          >
+            Leave
+          </button>
+        </div>
+      )}
+
+      {/* Standings */}
+      <div className="bg-white rounded-xl border border-green-900/10 overflow-hidden">
+        <div className="bg-green-900 px-4 py-2.5 flex items-center justify-between">
+          <span
+            className="text-green-100 text-sm font-medium"
+            style={{ fontFamily: "Georgia, serif" }}
+          >
+            Standings
+          </span>
+          <span className="text-green-300 text-xs">{scoreLabel}</span>
+        </div>
+
+        {standings.length === 0 ? (
+          <div className="p-8 text-center text-green-800/40 text-sm">
+            No rounds played yet in the tournament period
+          </div>
+        ) : (
+          <div className="divide-y divide-green-900/5">
+            {standings.map((entry, i) => (
+              <div
+                key={entry.user_id + (entry.team_id || "")}
+                className={`px-4 py-3 flex items-center gap-3 ${
+                  entry.user_id === currentUserId ? "bg-green-50/50" : ""
+                }`}
+              >
+                <div
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
+                    i === 0
+                      ? "bg-yellow-400 text-yellow-900"
+                      : i === 1
+                      ? "bg-gray-300 text-gray-700"
+                      : i === 2
+                      ? "bg-amber-600 text-amber-100"
+                      : "bg-green-100 text-green-800"
+                  }`}
+                >
+                  {i + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-green-900 text-sm truncate">
+                    {entry.display_name}
+                  </div>
+                  <div className="text-[10px] text-green-800/40">
+                    {entry.detail}
+                  </div>
+                </div>
+                <div
+                  className="text-lg font-bold text-green-900"
+                  style={{ fontFamily: "Georgia, serif" }}
+                >
+                  {entry.score}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
