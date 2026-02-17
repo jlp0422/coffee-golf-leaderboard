@@ -1,5 +1,5 @@
 import { getStats, getRounds } from "@/app/actions";
-import { COLOR_DISPLAY, type HoleColor, HOLE_COLORS } from "@/lib/types";
+import { COLOR_DISPLAY, HOLE_COLORS } from "@/lib/types";
 import Link from "next/link";
 
 export default async function StatsPage() {
@@ -146,23 +146,29 @@ export default async function StatsPage() {
         <div className="text-green-800/50 text-xs mb-3 font-semibold uppercase tracking-wider">
           Score Distribution
         </div>
-        <div className="flex items-end gap-1 h-24">
+        <div className="flex items-end gap-1" style={{ height: 96 }}>
           {Array.from(
             { length: maxScore - minScore + 1 },
             (_, i) => minScore + i
           ).map((score) => {
             const count = scoreCounts[score] || 0;
-            const height = count > 0 ? (count / maxCount) * 100 : 0;
+            const barHeight = count > 0 ? Math.round((count / maxCount) * 80) : 0;
             return (
               <div
                 key={score}
-                className="flex-1 flex flex-col items-center gap-1"
+                className="flex-1 flex flex-col items-center justify-end"
+                style={{ height: "100%" }}
               >
+                {count > 0 && (
+                  <span className="text-[9px] text-green-800/60 font-medium mb-0.5">
+                    {count}
+                  </span>
+                )}
                 <div
-                  className="w-full bg-green-600/80 rounded-t transition-all"
-                  style={{ height: `${height}%`, minHeight: count > 0 ? 4 : 0 }}
+                  className="w-full bg-green-600/80 rounded-t"
+                  style={{ height: barHeight, minHeight: count > 0 ? 4 : 0 }}
                 />
-                <span className="text-[9px] text-green-800/40">{score}</span>
+                <span className="text-[9px] text-green-800/40 mt-1">{score}</span>
               </div>
             );
           })}

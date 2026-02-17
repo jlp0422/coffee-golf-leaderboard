@@ -147,7 +147,7 @@ export default async function Dashboard() {
                   return (
                     <div key={color} className="text-center flex-1">
                       <div
-                        className={`${display.bg} text-white text-sm font-bold rounded-lg py-2 mb-1`}
+                        className={`${display.bg} text-white text-lg font-bold rounded-lg py-2 mb-1`}
                         style={{ fontFamily: "'Caveat', cursive" }}
                       >
                         {data.average > 0
