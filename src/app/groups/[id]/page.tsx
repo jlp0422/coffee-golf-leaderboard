@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import Link from "next/link";
 import {
   getGroup,
@@ -160,15 +161,15 @@ export default function GroupDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
-        <div className="text-center py-12 text-green-800/40">Loading...</div>
+      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
+        <LoadingSpinner />
       </div>
     );
   }
 
   if (!group) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8 md:py-12 text-center">
+      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12 text-center">
         <div className="text-5xl mb-4">&#128683;</div>
         <p className="text-green-800/60">Group not found or access denied</p>
         <Link
@@ -197,7 +198,7 @@ export default function GroupDetailPage() {
     : tabs;
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <Link
         href="/groups"
         className="text-green-700 hover:text-green-900 text-sm mb-4 inline-block"
@@ -252,7 +253,7 @@ export default function GroupDetailPage() {
                 : "text-green-800/50 hover:text-green-800"
             }`}
           >
-            {tab === "settings" ? "&#9881;&#65039;" : tab}
+            {tab === "settings" ? "⚙️ Settings" : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>

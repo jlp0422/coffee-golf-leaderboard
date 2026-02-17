@@ -49,7 +49,7 @@ export default function CreateTournamentPage() {
   };
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <button
         onClick={() => router.back()}
         className="text-green-700 hover:text-green-900 text-sm mb-6 inline-block"

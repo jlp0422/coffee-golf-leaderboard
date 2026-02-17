@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { getProfile, updateProfile, updateAvatar } from "./actions";
 import { createClient } from "@/lib/supabase/client";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface ProfileData {
   id: string;
@@ -99,14 +100,14 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
-        <div className="text-center py-12 text-green-800/40">Loading...</div>
+      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
+        <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <h1
         className="text-2xl font-bold text-green-900 mb-6"
         style={{ fontFamily: "Georgia, serif" }}
@@ -138,7 +139,7 @@ export default function ProfilePage() {
               htmlFor="avatar-upload"
               className="absolute -bottom-1 -right-1 w-7 h-7 bg-green-800 hover:bg-green-900 text-white rounded-full flex items-center justify-center cursor-pointer text-xs transition-colors"
             >
-              {uploading ? "..." : "&#9999;&#65039;"}
+              {uploading ? "…" : "✏️"}
             </label>
             <input
               id="avatar-upload"

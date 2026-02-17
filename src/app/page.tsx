@@ -27,7 +27,7 @@ export default async function Dashboard() {
   const displayName = profile?.display_name || user?.email?.split("@")[0] || "Golfer";
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       {/* Greeting */}
       <div className="mb-8">
         <h1
@@ -52,9 +52,17 @@ export default async function Dashboard() {
       {/* Today's score or CTA */}
       {todayRound ? (
         <div className="mb-8">
-          <h2 className="text-xs font-semibold text-green-800/40 uppercase tracking-wider mb-3">
-            Today&apos;s Round
-          </h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold text-green-800/40 uppercase tracking-wider">
+              Today&apos;s Round
+            </h2>
+            <Link
+              href="/submit"
+              className="text-xs text-green-700 hover:text-green-900 font-medium"
+            >
+              ✏️ Edit score
+            </Link>
+          </div>
           <ScoreCard
             date={todayRound.played_date}
             totalStrokes={todayRound.total_strokes}

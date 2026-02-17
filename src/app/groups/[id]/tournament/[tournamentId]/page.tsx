@@ -16,6 +16,7 @@ import {
 } from "../../../actions";
 import { FORMAT_DISPLAY, type TournamentFormat } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface StandingEntry {
   user_id: string;
@@ -147,15 +148,15 @@ export default function TournamentDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
-        <div className="text-center py-12 text-green-800/40">Loading...</div>
+      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
+        <LoadingSpinner />
       </div>
     );
   }
 
   if (!tournament) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8 md:py-12 text-center">
+      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12 text-center">
         <div className="text-5xl mb-4">&#128683;</div>
         <p className="text-green-800/60">Tournament not found</p>
         <Link
@@ -191,7 +192,7 @@ export default function TournamentDetailPage() {
   );
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <Link
         href={`/groups/${groupId}`}
         className="text-green-700 hover:text-green-900 text-sm mb-4 inline-block"
@@ -229,7 +230,7 @@ export default function TournamentDetailPage() {
           &ndash;{" "}
           {new Date(tournament.end_date + "T00:00:00").toLocaleDateString(
             "en-US",
-            { month: "short", day: "numeric", year: "numeric" }
+            { month: "short", day: "numeric" }
           )}
         </div>
         <div className="text-xs text-green-800/40 mt-1">
