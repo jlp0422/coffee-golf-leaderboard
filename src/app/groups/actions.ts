@@ -249,6 +249,174 @@ export async function removeGroupMember(groupId: string, userId: string) {
   return { success: true };
 }
 
+export async function updateGroupName(groupId: string, name: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Not authenticated" };
+  if (!name.trim()) return { error: "Group name is required" };
+
+  const { error } = await supabase
+    .from("groups")
+    .update({ name: name.trim() })
+    .eq("id", groupId)
+    .eq("created_by", user.id);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/groups");
+  revalidatePath(`/groups/${groupId}`);
+  return { success: true };
+}
+
+export async function deleteGroup(groupId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Not authenticated" };
+
+  // Verify ownership
+  const { data: group } = await supabase
+    .from("groups")
+    .select("created_by")
+    .eq("id", groupId)
+    .single();
+
+  if (!group || group.created_by !== user.id) {
+    return { error: "Only the group owner can delete the group" };
+  }
+
+  const { error } = await supabase
+    .from("groups")
+    .delete()
+    .eq("id", groupId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath("/groups");
+  return { success: true };
+}
+
+// ============================================================
+// TEAM PAIRING MANAGEMENT
+// ============================================================
+
+export async function assignTeam(
+  tournamentId: string,
+  userId: string,
+  teamId: number
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Not authenticated" };
+
+  // Verify caller is group owner/admin
+  const { data: tournament } = await supabase
+    .from("tournaments")
+    .select("group_id")
+    .eq("id", tournamentId)
+    .single();
+
+  if (!tournament) return { error: "Tournament not found" };
+
+  const { data: membership } = await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", tournament.group_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!membership || !["owner", "admin"].includes(membership.role)) {
+    return { error: "Only group owners/admins can assign teams" };
+  }
+
+  const { error } = await supabase
+    .from("tournament_participants")
+    .update({ team_id: teamId })
+    .eq("tournament_id", tournamentId)
+    .eq("user_id", userId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/groups`);
+  return { success: true };
+}
+
+export async function addParticipant(
+  tournamentId: string,
+  userId: string,
+  teamId?: number
+) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Not authenticated" };
+
+  const { data: tournament } = await supabase
+    .from("tournaments")
+    .select("group_id")
+    .eq("id", tournamentId)
+    .single();
+
+  if (!tournament) return { error: "Tournament not found" };
+
+  const { data: membership } = await supabase
+    .from("group_members")
+    .select("role")
+    .eq("group_id", tournament.group_id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (!membership || !["owner", "admin"].includes(membership.role)) {
+    return { error: "Only group owners/admins can add participants" };
+  }
+
+  const { error } = await supabase
+    .from("tournament_participants")
+    .insert({
+      tournament_id: tournamentId,
+      user_id: userId,
+      team_id: teamId ?? null,
+    });
+
+  if (error) {
+    if (error.code === "23505") return { error: "Player already in tournament" };
+    return { error: error.message };
+  }
+
+  revalidatePath(`/groups`);
+  return { success: true };
+}
+
+export async function removeParticipant(tournamentId: string, userId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { error: "Not authenticated" };
+
+  const { error } = await supabase
+    .from("tournament_participants")
+    .delete()
+    .eq("tournament_id", tournamentId)
+    .eq("user_id", userId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/groups`);
+  return { success: true };
+}
+
 // ============================================================
 // GROUP LEADERBOARD
 // ============================================================

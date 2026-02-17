@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/history", label: "History", icon: "&#128197;" },
   { href: "/stats", label: "Stats", icon: "&#128202;" },
   { href: "/groups", label: "Groups", icon: "&#127948;&#65039;" },
+  { href: "/profile", label: "Profile", icon: "&#128100;" },
 ];
 
 export default function Nav() {

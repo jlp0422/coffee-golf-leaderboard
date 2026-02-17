@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getMyGroups } from "./actions";
 
@@ -17,15 +17,13 @@ export default function GroupsPage() {
   const [groups, setGroups] = useState<GroupWithMeta[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    const data = await getMyGroups();
-    setGroups(data as GroupWithMeta[]);
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
-    load();
-  }, [load]);
+    void (async () => {
+      const data = await getMyGroups();
+      setGroups(data as GroupWithMeta[]);
+      setLoading(false);
+    })();
+  }, []);
 
   if (loading) {
     return (

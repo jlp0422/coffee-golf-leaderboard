@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -10,6 +11,8 @@ import {
   getGroupTournaments,
   leaveGroup,
   removeGroupMember,
+  updateGroupName,
+  deleteGroup,
 } from "../actions";
 import type { TournamentFormat } from "@/lib/types";
 import { FORMAT_DISPLAY } from "@/lib/types";
@@ -24,7 +27,7 @@ interface GroupData {
 interface MemberData {
   user_id: string;
   role: string;
-  profiles: { display_name: string } | null;
+  profiles: { display_name: string; avatar_url: string | null } | null;
 }
 
 interface LeaderboardEntry {
@@ -45,6 +48,37 @@ interface TournamentData {
   status: string;
 }
 
+function Avatar({
+  name,
+  url,
+  size = "sm",
+}: {
+  name: string;
+  url?: string | null;
+  size?: "sm" | "md";
+}) {
+  const px = size === "md" ? "w-10 h-10 text-base" : "w-7 h-7 text-xs";
+  if (url) {
+    return (
+      <Image
+        src={url}
+        alt={name}
+        width={size === "md" ? 40 : 28}
+        height={size === "md" ? 40 : 28}
+        className={`${px} rounded-full object-cover border border-green-900/10`}
+        unoptimized
+      />
+    );
+  }
+  return (
+    <div
+      className={`${px} rounded-full bg-green-100 flex items-center justify-center border border-green-900/10 font-bold text-green-800/50`}
+    >
+      {name?.[0]?.toUpperCase() || "?"}
+    </div>
+  );
+}
+
 export default function GroupDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -57,10 +91,12 @@ export default function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "leaderboard" | "members" | "tournaments"
+    "leaderboard" | "members" | "tournaments" | "settings"
   >("leaderboard");
+  const [editingName, setEditingName] = useState(false);
+  const [newName, setNewName] = useState("");
 
-  const load = useCallback(async () => {
+  const load = async () => {
     const [g, m, lb, t] = await Promise.all([
       getGroup(groupId),
       getGroupMembers(groupId),
@@ -71,12 +107,12 @@ export default function GroupDetailPage() {
     setMembers(m as MemberData[]);
     setLeaderboard(lb as LeaderboardEntry[]);
     setTournaments(t as TournamentData[]);
+    if (g) setNewName(g.name);
     setLoading(false);
-  }, [groupId]);
+  };
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void load(); }, [groupId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCopyCode = () => {
     if (group) {
@@ -89,21 +125,37 @@ export default function GroupDetailPage() {
   const handleLeave = async () => {
     if (!confirm("Are you sure you want to leave this group?")) return;
     const result = await leaveGroup(groupId);
-    if (result.error) {
-      alert(result.error);
-    } else {
-      router.push("/groups");
-    }
+    if (result.error) alert(result.error);
+    else router.push("/groups");
   };
 
   const handleRemoveMember = async (userId: string, name: string) => {
     if (!confirm(`Remove ${name} from the group?`)) return;
     const result = await removeGroupMember(groupId, userId);
-    if (result.error) {
-      alert(result.error);
-    } else {
+    if (result.error) alert(result.error);
+    else load();
+  };
+
+  const handleRename = async () => {
+    if (!newName.trim()) return;
+    const result = await updateGroupName(groupId, newName);
+    if (result.error) alert(result.error);
+    else {
+      setEditingName(false);
       load();
     }
+  };
+
+  const handleDelete = async () => {
+    if (
+      !confirm(
+        "Delete this group? All tournaments and data will be permanently removed."
+      )
+    )
+      return;
+    const result = await deleteGroup(groupId);
+    if (result.error) alert(result.error);
+    else router.push("/groups");
   };
 
   if (loading) {
@@ -132,9 +184,20 @@ export default function GroupDetailPage() {
   const isOwner = group.role === "owner";
   const isAdmin = group.role === "admin" || isOwner;
 
+  // Build avatar lookup from members for leaderboard
+  const avatarMap: Record<string, string | null> = {};
+  members.forEach((m) => {
+    const p = m.profiles as { avatar_url: string | null } | null;
+    avatarMap[m.user_id] = p?.avatar_url || null;
+  });
+
+  const tabs = ["leaderboard", "members", "tournaments"] as const;
+  const allTabs = isOwner
+    ? ([...tabs, "settings"] as const)
+    : tabs;
+
   return (
     <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
-      {/* Header */}
       <Link
         href="/groups"
         className="text-green-700 hover:text-green-900 text-sm mb-4 inline-block"
@@ -179,7 +242,7 @@ export default function GroupDetailPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-4 bg-green-900/5 rounded-xl p-1">
-        {(["leaderboard", "members", "tournaments"] as const).map((tab) => (
+        {allTabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -189,12 +252,12 @@ export default function GroupDetailPage() {
                 : "text-green-800/50 hover:text-green-800"
             }`}
           >
-            {tab}
+            {tab === "settings" ? "&#9881;&#65039;" : tab}
           </button>
         ))}
       </div>
 
-      {/* Tab content */}
+      {/* Leaderboard */}
       {activeTab === "leaderboard" && (
         <div className="bg-white rounded-xl border border-green-900/10 overflow-hidden">
           <div className="bg-green-900 px-4 py-2.5">
@@ -217,7 +280,7 @@ export default function GroupDetailPage() {
                   className="px-4 py-3 flex items-center gap-3"
                 >
                   <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
                       i === 0
                         ? "bg-yellow-400 text-yellow-900"
                         : i === 1
@@ -229,6 +292,10 @@ export default function GroupDetailPage() {
                   >
                     {i + 1}
                   </div>
+                  <Avatar
+                    name={entry.display_name}
+                    url={avatarMap[entry.user_id]}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-green-900 text-sm truncate">
                       {entry.display_name}
@@ -255,31 +322,38 @@ export default function GroupDetailPage() {
         </div>
       )}
 
+      {/* Members */}
       {activeTab === "members" && (
         <div className="space-y-2">
           {members.map((member) => {
-            const profile = member.profiles as { display_name: string } | null;
+            const profile = member.profiles as {
+              display_name: string;
+              avatar_url: string | null;
+            } | null;
+            const name = profile?.display_name || "Unknown";
             return (
               <div
                 key={member.user_id}
                 className="bg-white rounded-xl border border-green-900/10 px-4 py-3 flex items-center justify-between"
               >
-                <div>
-                  <div className="font-medium text-green-900 text-sm">
-                    {profile?.display_name || "Unknown"}
-                  </div>
-                  <div className="text-[10px] text-green-600 font-medium capitalize">
-                    {member.role}
+                <div className="flex items-center gap-3">
+                  <Avatar
+                    name={name}
+                    url={profile?.avatar_url}
+                    size="md"
+                  />
+                  <div>
+                    <div className="font-medium text-green-900 text-sm">
+                      {name}
+                    </div>
+                    <div className="text-[10px] text-green-600 font-medium capitalize">
+                      {member.role}
+                    </div>
                   </div>
                 </div>
                 {isOwner && member.role !== "owner" && (
                   <button
-                    onClick={() =>
-                      handleRemoveMember(
-                        member.user_id,
-                        profile?.display_name || "this member"
-                      )
-                    }
+                    onClick={() => handleRemoveMember(member.user_id, name)}
                     className="text-xs text-red-500 hover:text-red-700"
                   >
                     Remove
@@ -296,6 +370,7 @@ export default function GroupDetailPage() {
         </div>
       )}
 
+      {/* Tournaments */}
       {activeTab === "tournaments" && (
         <div className="space-y-3">
           {isAdmin && (
@@ -353,6 +428,71 @@ export default function GroupDetailPage() {
               </Link>
             ))
           )}
+        </div>
+      )}
+
+      {/* Settings (owner only) */}
+      {activeTab === "settings" && isOwner && (
+        <div className="space-y-4">
+          {/* Rename */}
+          <div className="bg-white rounded-xl border border-green-900/10 p-4">
+            <h3 className="text-sm font-semibold text-green-800/60 uppercase tracking-wider mb-3">
+              Group Name
+            </h3>
+            {editingName ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  maxLength={50}
+                  className="flex-1 px-3 py-2 border border-green-900/20 rounded-lg bg-white text-green-900 text-sm"
+                />
+                <button
+                  onClick={handleRename}
+                  className="px-4 py-2 bg-green-800 hover:bg-green-900 text-white rounded-lg text-sm font-medium"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setEditingName(false);
+                    setNewName(group.name);
+                  }}
+                  className="px-3 py-2 text-green-800/50 hover:text-green-800 text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="text-green-900">{group.name}</span>
+                <button
+                  onClick={() => setEditingName(true)}
+                  className="text-xs text-green-700 hover:text-green-900 font-medium"
+                >
+                  Rename
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Danger zone */}
+          <div className="bg-white rounded-xl border border-red-200 p-4">
+            <h3 className="text-sm font-semibold text-red-600 uppercase tracking-wider mb-2">
+              Danger Zone
+            </h3>
+            <p className="text-xs text-green-800/50 mb-3">
+              Deleting the group removes all members, tournaments, and data
+              permanently.
+            </p>
+            <button
+              onClick={handleDelete}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              Delete Group
+            </button>
+          </div>
         </div>
       )}
     </div>

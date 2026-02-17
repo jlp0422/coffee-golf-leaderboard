@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { getRounds, deleteRound } from "@/app/actions";
 import ScoreCard from "@/components/ScoreCard";
 import type { HoleColor } from "@/lib/types";
@@ -16,15 +16,14 @@ export default function HistoryPage() {
   const [rounds, setRounds] = useState<RoundData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadRounds = useCallback(async () => {
+  const loadRounds = async () => {
     const data = await getRounds();
     setRounds(data as RoundData[]);
     setLoading(false);
-  }, []);
+  };
 
-  useEffect(() => {
-    loadRounds();
-  }, [loadRounds]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void loadRounds(); }, []);
 
   const handleDelete = async (roundId: string) => {
     if (!confirm("Delete this round? This cannot be undone.")) return;

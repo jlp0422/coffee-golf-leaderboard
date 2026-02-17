@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   getTournamentStandings,
   joinTournament,
   leaveTournament,
   getTournamentParticipants,
+  getGroupMembers,
+  getGroup,
+  assignTeam,
+  addParticipant,
+  removeParticipant,
 } from "../../../actions";
 import { FORMAT_DISPLAY, type TournamentFormat } from "@/lib/types";
 import { createClient } from "@/lib/supabase/client";
@@ -32,30 +37,49 @@ interface TournamentData {
   status: string;
 }
 
+interface ParticipantData {
+  user_id: string;
+  team_id: number | null;
+  profiles: { display_name: string } | null;
+}
+
+interface MemberData {
+  user_id: string;
+  role: string;
+  profiles: { display_name: string } | null;
+}
+
 export default function TournamentDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const groupId = params.id as string;
   const tournamentId = params.tournamentId as string;
 
   const [tournament, setTournament] = useState<TournamentData | null>(null);
   const [standings, setStandings] = useState<StandingEntry[]>([]);
+  const [participants, setParticipants] = useState<ParticipantData[]>([]);
+  const [groupMembers, setGroupMembers] = useState<MemberData[]>([]);
   const [isParticipant, setIsParticipant] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [teamId, setTeamId] = useState<number>(1);
+  const [activeView, setActiveView] = useState<"standings" | "pairings">(
+    "standings"
+  );
 
-  const load = useCallback(async () => {
+  const load = async () => {
     const supabase = createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
     setCurrentUserId(user?.id || null);
 
-    const [standingsData, participants] = await Promise.all([
+    const [standingsData, parts, members, group] = await Promise.all([
       getTournamentStandings(tournamentId),
       getTournamentParticipants(tournamentId),
+      getGroupMembers(groupId),
+      getGroup(groupId),
     ]);
 
     if (standingsData) {
@@ -63,20 +87,24 @@ export default function TournamentDetailPage() {
       setStandings(standingsData.standings as StandingEntry[]);
     }
 
-    if (user && participants) {
+    setParticipants(parts as ParticipantData[]);
+    setGroupMembers(members as MemberData[]);
+
+    if (group && ["owner", "admin"].includes(group.role)) {
+      setIsAdmin(true);
+    }
+
+    if (user && parts) {
       setIsParticipant(
-        participants.some(
-          (p: { user_id: string }) => p.user_id === user.id
-        )
+        parts.some((p: { user_id: string }) => p.user_id === user.id)
       );
     }
 
     setLoading(false);
-  }, [tournamentId]);
+  };
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { void load(); }, [tournamentId, groupId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleJoin = async () => {
     setActionLoading(true);
@@ -84,11 +112,8 @@ export default function TournamentDetailPage() {
       tournamentId,
       tournament?.team_size && tournament.team_size > 1 ? teamId : undefined
     );
-    if (result.error) {
-      alert(result.error);
-    } else {
-      await load();
-    }
+    if (result.error) alert(result.error);
+    else await load();
     setActionLoading(false);
   };
 
@@ -96,12 +121,28 @@ export default function TournamentDetailPage() {
     if (!confirm("Leave this tournament?")) return;
     setActionLoading(true);
     const result = await leaveTournament(tournamentId);
-    if (result.error) {
-      alert(result.error);
-    } else {
-      await load();
-    }
+    if (result.error) alert(result.error);
+    else await load();
     setActionLoading(false);
+  };
+
+  const handleAssignTeam = async (userId: string, newTeamId: number) => {
+    const result = await assignTeam(tournamentId, userId, newTeamId);
+    if (result.error) alert(result.error);
+    else await load();
+  };
+
+  const handleAddParticipant = async (userId: string) => {
+    const result = await addParticipant(tournamentId, userId, 1);
+    if (result.error) alert(result.error);
+    else await load();
+  };
+
+  const handleRemoveParticipant = async (userId: string, name: string) => {
+    if (!confirm(`Remove ${name} from the tournament?`)) return;
+    const result = await removeParticipant(tournamentId, userId);
+    if (result.error) alert(result.error);
+    else await load();
   };
 
   if (loading) {
@@ -135,6 +176,19 @@ export default function TournamentDetailPage() {
       : tournament.format === "skins"
       ? "Skins"
       : "Strokes";
+
+  // Group participants by team for pairing view
+  const teamGroups: Record<number, ParticipantData[]> = {};
+  participants.forEach((p) => {
+    const tid = p.team_id || 0;
+    if (!teamGroups[tid]) teamGroups[tid] = [];
+    teamGroups[tid].push(p);
+  });
+
+  // Members not yet in tournament
+  const nonParticipants = groupMembers.filter(
+    (m) => !participants.some((p) => p.user_id === m.user_id)
+  );
 
   return (
     <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
@@ -189,7 +243,7 @@ export default function TournamentDetailPage() {
           <p className="text-sm text-green-800/60 mb-3">
             Join this tournament to compete!
           </p>
-          {isTeamFormat && (
+          {isTeamFormat && !isAdmin && (
             <div className="mb-3">
               <label className="block text-xs font-medium text-green-800 mb-1">
                 Team Number
@@ -230,63 +284,201 @@ export default function TournamentDetailPage() {
         </div>
       )}
 
-      {/* Standings */}
-      <div className="bg-white rounded-xl border border-green-900/10 overflow-hidden">
-        <div className="bg-green-900 px-4 py-2.5 flex items-center justify-between">
-          <span
-            className="text-green-100 text-sm font-medium"
-            style={{ fontFamily: "Georgia, serif" }}
+      {/* Tabs: Standings / Pairings */}
+      {isTeamFormat && (
+        <div className="flex gap-1 mb-4 bg-green-900/5 rounded-xl p-1">
+          <button
+            onClick={() => setActiveView("standings")}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeView === "standings"
+                ? "bg-white text-green-900 shadow-sm"
+                : "text-green-800/50 hover:text-green-800"
+            }`}
           >
             Standings
-          </span>
-          <span className="text-green-300 text-xs">{scoreLabel}</span>
+          </button>
+          <button
+            onClick={() => setActiveView("pairings")}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeView === "pairings"
+                ? "bg-white text-green-900 shadow-sm"
+                : "text-green-800/50 hover:text-green-800"
+            }`}
+          >
+            Pairings
+          </button>
         </div>
+      )}
 
-        {standings.length === 0 ? (
-          <div className="p-8 text-center text-green-800/40 text-sm">
-            No rounds played yet in the tournament period
+      {/* Standings */}
+      {(activeView === "standings" || !isTeamFormat) && (
+        <div className="bg-white rounded-xl border border-green-900/10 overflow-hidden">
+          <div className="bg-green-900 px-4 py-2.5 flex items-center justify-between">
+            <span
+              className="text-green-100 text-sm font-medium"
+              style={{ fontFamily: "Georgia, serif" }}
+            >
+              Standings
+            </span>
+            <span className="text-green-300 text-xs">{scoreLabel}</span>
           </div>
-        ) : (
-          <div className="divide-y divide-green-900/5">
-            {standings.map((entry, i) => (
-              <div
-                key={entry.user_id + (entry.team_id || "")}
-                className={`px-4 py-3 flex items-center gap-3 ${
-                  entry.user_id === currentUserId ? "bg-green-50/50" : ""
-                }`}
-              >
+
+          {standings.length === 0 ? (
+            <div className="p-8 text-center text-green-800/40 text-sm">
+              No rounds played yet in the tournament period
+            </div>
+          ) : (
+            <div className="divide-y divide-green-900/5">
+              {standings.map((entry, i) => (
                 <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
-                    i === 0
-                      ? "bg-yellow-400 text-yellow-900"
-                      : i === 1
-                      ? "bg-gray-300 text-gray-700"
-                      : i === 2
-                      ? "bg-amber-600 text-amber-100"
-                      : "bg-green-100 text-green-800"
+                  key={entry.user_id + (entry.team_id || "")}
+                  className={`px-4 py-3 flex items-center gap-3 ${
+                    entry.user_id === currentUserId ? "bg-green-50/50" : ""
                   }`}
                 >
-                  {i + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-green-900 text-sm truncate">
-                    {entry.display_name}
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${
+                      i === 0
+                        ? "bg-yellow-400 text-yellow-900"
+                        : i === 1
+                        ? "bg-gray-300 text-gray-700"
+                        : i === 2
+                        ? "bg-amber-600 text-amber-100"
+                        : "bg-green-100 text-green-800"
+                    }`}
+                  >
+                    {i + 1}
                   </div>
-                  <div className="text-[10px] text-green-800/40">
-                    {entry.detail}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-green-900 text-sm truncate">
+                      {entry.display_name}
+                    </div>
+                    <div className="text-[10px] text-green-800/40">
+                      {entry.detail}
+                    </div>
+                  </div>
+                  <div
+                    className="text-lg font-bold text-green-900"
+                    style={{ fontFamily: "Georgia, serif" }}
+                  >
+                    {entry.score}
                   </div>
                 </div>
-                <div
-                  className="text-lg font-bold text-green-900"
-                  style={{ fontFamily: "Georgia, serif" }}
-                >
-                  {entry.score}
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Pairings (team format only) */}
+      {activeView === "pairings" && isTeamFormat && (
+        <div className="space-y-4">
+          {/* Teams */}
+          {Object.entries(teamGroups)
+            .sort(([a], [b]) => parseInt(a) - parseInt(b))
+            .map(([tid, members]) => (
+              <div
+                key={tid}
+                className="bg-white rounded-xl border border-green-900/10 overflow-hidden"
+              >
+                <div className="bg-green-800 px-4 py-2 flex items-center justify-between">
+                  <span className="text-green-100 text-sm font-medium">
+                    {parseInt(tid) === 0 ? "Unassigned" : `Team ${tid}`}
+                  </span>
+                  <span className="text-green-300 text-xs">
+                    {members.length} player{members.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
+                <div className="divide-y divide-green-900/5">
+                  {members.map((p) => {
+                    const profile = p.profiles as {
+                      display_name: string;
+                    } | null;
+                    const name = profile?.display_name || "Unknown";
+                    return (
+                      <div
+                        key={p.user_id}
+                        className="px-4 py-2.5 flex items-center justify-between"
+                      >
+                        <span className="text-sm text-green-900 font-medium">
+                          {name}
+                        </span>
+                        {isAdmin && (
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={p.team_id || 0}
+                              onChange={(e) =>
+                                handleAssignTeam(
+                                  p.user_id,
+                                  parseInt(e.target.value)
+                                )
+                              }
+                              className="px-2 py-1 border border-green-900/20 rounded-lg bg-white text-green-900 text-xs"
+                            >
+                              <option value={0}>Unassigned</option>
+                              {[1, 2, 3, 4, 5, 6, 7, 8].map((t) => (
+                                <option key={t} value={t}>
+                                  Team {t}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() =>
+                                handleRemoveParticipant(p.user_id, name)
+                              }
+                              className="text-red-500 hover:text-red-700 text-xs"
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))}
-          </div>
-        )}
-      </div>
+
+          {/* Add members not yet in tournament */}
+          {isAdmin && nonParticipants.length > 0 && (
+            <div className="bg-white rounded-xl border border-green-900/10 overflow-hidden">
+              <div className="bg-green-900/70 px-4 py-2">
+                <span className="text-green-100 text-sm font-medium">
+                  Add Players
+                </span>
+              </div>
+              <div className="divide-y divide-green-900/5">
+                {nonParticipants.map((m) => {
+                  const profile = m.profiles as {
+                    display_name: string;
+                  } | null;
+                  const name = profile?.display_name || "Unknown";
+                  return (
+                    <div
+                      key={m.user_id}
+                      className="px-4 py-2.5 flex items-center justify-between"
+                    >
+                      <span className="text-sm text-green-800/60">{name}</span>
+                      <button
+                        onClick={() => handleAddParticipant(m.user_id)}
+                        className="text-xs bg-green-100 hover:bg-green-200 text-green-800 px-3 py-1 rounded-lg font-medium transition-colors"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {participants.length === 0 && (
+            <div className="text-center py-8 text-green-800/40 text-sm">
+              No participants yet
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
