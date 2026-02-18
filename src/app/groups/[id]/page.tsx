@@ -253,7 +253,7 @@ export default function GroupDetailPage() {
                 : "text-green-800/50 hover:text-green-800"
             }`}
           >
-            {tab === "settings" ? "⚙️ Settings" : tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab === "settings" ? "Settings" : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>
