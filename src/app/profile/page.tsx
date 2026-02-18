@@ -199,12 +199,6 @@ export default function ProfilePage() {
           {message.text}
         </div>
       )}
-
-      {/* Info note about avatars */}
-      <p className="text-xs text-green-800/30 mt-6 text-center">
-        Avatar requires a Supabase Storage bucket named &quot;avatars&quot; with
-        public access
-      </p>
     </div>
   );
 }
