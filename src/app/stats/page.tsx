@@ -56,32 +56,32 @@ export default async function StatsPage() {
         <div className="bg-white rounded-xl border border-green-900/10 p-4 text-center">
           <div className="text-green-800/50 text-xs">Average</div>
           <div
-            className="text-2xl font-bold text-green-900 mt-1"
+            className="text-3xl font-bold text-green-900 mt-1"
             style={{ fontFamily: "Georgia, serif" }}
           >
             {stats.averageScore}
           </div>
         </div>
         <div className="bg-white rounded-xl border border-green-900/10 p-4 text-center">
-          <div className="text-green-800/50 text-xs">Best</div>
+          <div className="text-green-800/50 text-sm">Best</div>
           <div
-            className="text-2xl font-bold text-green-900 mt-1"
+            className="text-3xl font-bold text-green-900 mt-1"
             style={{ fontFamily: "Georgia, serif" }}
           >
             {stats.bestRound}
           </div>
           <div className="text-[10px] text-green-800/40 mt-0.5">
             {stats.bestRoundDate &&
-              new Date(stats.bestRoundDate + "T00:00:00").toLocaleDateString(
+              <span className="text-xs">{new Date(stats.bestRoundDate + "T00:00:00").toLocaleDateString(
                 "en-US",
                 { month: "short", day: "numeric" }
-              )}
+              )}</span>}
           </div>
         </div>
         <div className="bg-white rounded-xl border border-green-900/10 p-4 text-center">
           <div className="text-green-800/50 text-xs">Rounds</div>
           <div
-            className="text-2xl font-bold text-green-900 mt-1"
+            className="text-3xl font-bold text-green-900 mt-1"
             style={{ fontFamily: "Georgia, serif" }}
           >
             {stats.totalRounds}
@@ -93,7 +93,7 @@ export default async function StatsPage() {
       <div className="bg-white rounded-xl border border-green-900/10 overflow-hidden mb-6">
         <div className="bg-green-900 px-4 py-2.5">
           <span
-            className="text-green-100 text-sm font-medium"
+            className="text-green-100 text-base font-medium"
             style={{ fontFamily: "Georgia, serif" }}
           >
             Score by Color
@@ -101,7 +101,7 @@ export default async function StatsPage() {
         </div>
         <div className="divide-y divide-green-900/5">
           {/* Header */}
-          <div className="grid grid-cols-4 px-4 py-2 text-[10px] font-semibold text-green-800/40 uppercase tracking-wider">
+          <div className="grid grid-cols-4 px-4 py-2 text-xs font-semibold text-green-800/40 uppercase tracking-wider">
             <div>Hole</div>
             <div className="text-center">Avg</div>
             <div className="text-center">Best</div>
@@ -143,7 +143,7 @@ export default async function StatsPage() {
 
       {/* Score distribution */}
       <div className="bg-white rounded-xl border border-green-900/10 p-4 mb-6">
-        <div className="text-green-800/50 text-xs mb-3 font-semibold uppercase tracking-wider">
+        <div className="text-green-800/50 text-sm mb-3 font-semibold uppercase tracking-wider">
           Score Distribution
         </div>
         <div className="flex items-end gap-1" style={{ height: 96 }}>
@@ -160,7 +160,7 @@ export default async function StatsPage() {
                 style={{ height: "100%" }}
               >
                 {count > 0 && (
-                  <span className="text-[9px] text-green-800/60 font-medium mb-0.5">
+                  <span className="text-xs text-green-800/60 font-medium mb-0.5">
                     {count}
                   </span>
                 )}
@@ -168,7 +168,7 @@ export default async function StatsPage() {
                   className="w-full bg-green-600/80 rounded-t"
                   style={{ height: barHeight, minHeight: count > 0 ? 4 : 0 }}
                 />
-                <span className="text-[9px] text-green-800/40 mt-1">{score}</span>
+                <span className="text-xs text-green-800/40 mt-1">{score}</span>
               </div>
             );
           })}
@@ -179,12 +179,12 @@ export default async function StatsPage() {
       {last10.length > 1 && (
         <div className="bg-white rounded-xl border border-green-900/10 p-4">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-green-800/50 text-xs font-semibold uppercase tracking-wider">
+            <div className="text-green-800/50 text-sm font-semibold uppercase tracking-wider">
               Last {last10.length} Rounds
             </div>
             <Link
               href="/history"
-              className="text-xs text-green-700 hover:text-green-900 font-medium"
+              className="text-sm text-green-700 hover:text-green-900 font-medium"
             >
               Full history →
             </Link>
@@ -213,14 +213,14 @@ export default async function StatsPage() {
                     key={i}
                     className="flex-1 flex flex-col items-center gap-1"
                   >
-                    <span className="text-[9px] text-green-800/60 font-medium">
+                    <span className="text-xs text-green-800/60 font-medium">
                       {round.total_strokes}
                     </span>
                     <div
                       className="w-full bg-green-700/70 rounded-t"
                       style={{ height: `${height}%` }}
                     />
-                    <span className="text-[8px] text-green-800/30">
+                    <span className="text-[9px] text-green-800/30">
                       {new Date(
                         round.played_date + "T00:00:00"
                       ).toLocaleDateString("en-US", {
