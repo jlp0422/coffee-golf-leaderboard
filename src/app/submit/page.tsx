@@ -54,7 +54,7 @@ export default function SubmitPage() {
   };
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <h1
         className="text-2xl font-bold text-green-900 mb-1"
         style={{ fontFamily: "Georgia, serif" }}

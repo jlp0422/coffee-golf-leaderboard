@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getRounds, deleteRound } from "@/app/actions";
 import ScoreCard from "@/components/ScoreCard";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import type { HoleColor } from "@/lib/types";
 
 interface RoundData {
@@ -44,14 +45,14 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
-        <div className="text-center py-12 text-green-800/40">Loading...</div>
+      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
+        <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <h1
         className="text-2xl font-bold text-green-900 mb-1"
         style={{ fontFamily: "Georgia, serif" }}

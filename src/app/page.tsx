@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import ScoreCard from "@/components/ScoreCard";
 import { COLOR_DISPLAY, type HoleColor } from "@/lib/types";
+import TodaySection from "@/components/TodaySection";
+import Greeting from "@/components/Greeting";
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -12,10 +14,6 @@ export default async function Dashboard() {
 
   const [rounds, stats] = await Promise.all([getRounds(), getStats()]);
 
-  const todayStr = new Date().toISOString().split("T")[0];
-  const todayRound = rounds.find(
-    (r: { played_date: string }) => r.played_date === todayStr
-  );
   const recentRounds = rounds.slice(0, 5);
 
   const { data: profile } = await supabase
@@ -27,63 +25,17 @@ export default async function Dashboard() {
   const displayName = profile?.display_name || user?.email?.split("@")[0] || "Golfer";
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
-      {/* Greeting */}
+    <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
+      {/* Greeting — client component for local time-of-day */}
       <div className="mb-8">
-        <h1
-          className="text-2xl font-bold text-green-900"
-          style={{ fontFamily: "Georgia, serif" }}
-        >
-          Good{" "}
-          {new Date().getHours() < 12
-            ? "morning"
-            : new Date().getHours() < 18
-            ? "afternoon"
-            : "evening"}
-          , {displayName}
-        </h1>
+        <Greeting name={displayName} />
         <p className="text-green-800/60 text-sm mt-1">
-          {todayRound
-            ? "Today's round is in the books"
-            : "Ready to post today's score?"}
+          Track your Coffee Golf scores
         </p>
       </div>
 
-      {/* Today's score or CTA */}
-      {todayRound ? (
-        <div className="mb-8">
-          <h2 className="text-xs font-semibold text-green-800/40 uppercase tracking-wider mb-3">
-            Today&apos;s Round
-          </h2>
-          <ScoreCard
-            date={todayRound.played_date}
-            totalStrokes={todayRound.total_strokes}
-            holes={todayRound.hole_scores || []}
-          />
-        </div>
-      ) : (
-        <Link
-          href="/submit"
-          className="block mb-8 bg-green-800 hover:bg-green-900 text-white rounded-xl p-5 transition-colors group"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div
-                className="font-semibold text-lg"
-                style={{ fontFamily: "Georgia, serif" }}
-              >
-                Submit today&apos;s score
-              </div>
-              <div className="text-green-200/70 text-sm mt-0.5">
-                Paste your Coffee Golf result
-              </div>
-            </div>
-            <span className="text-3xl group-hover:translate-x-1 transition-transform">
-              &#9999;&#65039;
-            </span>
-          </div>
-        </Link>
-      )}
+      {/* Today's score or CTA — client component for local timezone date */}
+      <TodaySection rounds={rounds} />
 
       {/* Quick stats */}
       {stats && (

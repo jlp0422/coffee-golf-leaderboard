@@ -7,7 +7,7 @@ export default async function StatsPage() {
 
   if (!stats || rounds.length === 0) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
         <h1
           className="text-2xl font-bold text-green-900 mb-6"
           style={{ fontFamily: "Georgia, serif" }}
@@ -43,7 +43,7 @@ export default async function StatsPage() {
   const last10 = rounds.slice(0, 10).reverse();
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <h1
         className="text-2xl font-bold text-green-900 mb-6"
         style={{ fontFamily: "Georgia, serif" }}
@@ -178,8 +178,16 @@ export default async function StatsPage() {
       {/* Recent trend */}
       {last10.length > 1 && (
         <div className="bg-white rounded-xl border border-green-900/10 p-4">
-          <div className="text-green-800/50 text-xs mb-3 font-semibold uppercase tracking-wider">
-            Last {last10.length} Rounds
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-green-800/50 text-xs font-semibold uppercase tracking-wider">
+              Last {last10.length} Rounds
+            </div>
+            <Link
+              href="/history"
+              className="text-xs text-green-700 hover:text-green-900 font-medium"
+            >
+              Full history →
+            </Link>
           </div>
           <div className="flex items-end gap-1 h-20">
             {last10.map(

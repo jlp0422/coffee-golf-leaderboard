@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getMyGroups } from "./actions";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface GroupWithMeta {
   id: string;
@@ -27,14 +28,14 @@ export default function GroupsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
-        <div className="text-center py-12 text-green-800/40">Loading...</div>
+      <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
+        <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-8 md:py-12">
+    <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1
