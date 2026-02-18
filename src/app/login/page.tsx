@@ -1,13 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+
+const DEV_EMAIL = process.env.NEXT_PUBLIC_DEV_AUTO_LOGIN_EMAIL;
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-redirect to dev-login route when env var is set
+  useEffect(() => {
+    if (DEV_EMAIL) {
+      window.location.href = "/auth/dev-login";
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,6 +38,17 @@ export default function LoginPage() {
     }
     setLoading(false);
   };
+
+  // Show nothing while redirecting in dev mode
+  if (DEV_EMAIL) {
+    return (
+      <div className="min-h-screen bg-[#f5f0e8] flex items-center justify-center">
+        <p className="text-green-800/50 text-sm" style={{ fontFamily: "Georgia, serif" }}>
+          Signing in as {DEV_EMAIL}…
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f5f0e8] flex items-center justify-center px-4">

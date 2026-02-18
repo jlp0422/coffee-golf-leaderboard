@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { parseScore } from "@/lib/parse-score";
+import { localDateStr } from "@/lib/date-utils";
 import { revalidatePath } from "next/cache";
 
 export async function submitScore(rawInput: string) {
@@ -22,7 +23,7 @@ export async function submitScore(rawInput: string) {
     return { error: (e as Error).message };
   }
 
-  const playedDate = parsed.date.toISOString().split("T")[0];
+  const playedDate = localDateStr(parsed.date);
 
   // Check if a score already exists for this date
   const { data: existing } = await supabase
@@ -151,18 +152,17 @@ export async function getStats() {
     rounds[0]
   );
 
-  // Calculate streak (consecutive days from today going backwards)
+  // Calculate streak (consecutive days going backwards)
+  // Compare date strings directly — avoids timezone math issues
   let currentStreak = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const todayDate = new Date();
 
   for (let i = 0; i < rounds.length; i++) {
-    const roundDate = new Date(rounds[i].played_date + "T00:00:00");
-    const expectedDate = new Date(today);
+    const expectedDate = new Date(todayDate);
     expectedDate.setDate(expectedDate.getDate() - i);
-    expectedDate.setHours(0, 0, 0, 0);
+    const expectedStr = localDateStr(expectedDate);
 
-    if (roundDate.getTime() === expectedDate.getTime()) {
+    if (rounds[i].played_date === expectedStr) {
       currentStreak++;
     } else {
       break;
