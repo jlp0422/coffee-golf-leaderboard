@@ -2,7 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import type { TournamentFormat } from "@/lib/types";
+import type { TournamentFormat, ScorecardDay, ScorecardRow, HoleColor } from "@/lib/types";
+import { HOLE_COLORS } from "@/lib/types";
 
 // ============================================================
 // GROUP ACTIONS
@@ -668,6 +669,138 @@ export async function getTournamentStandings(tournamentId: string) {
     default:
       return { tournament, standings: [] };
   }
+}
+
+// ============================================================
+// TOURNAMENT SCORECARD
+// ============================================================
+
+export async function getTournamentScorecard(tournamentId: string): Promise<{
+  tournament: { id: string; name: string; format: string; start_date: string; end_date: string; team_size: number };
+  participants: { user_id: string; team_id: number | null; display_name: string }[];
+  days: ScorecardDay[];
+} | null> {
+  const supabase = await createClient();
+
+  const tournament = await getTournament(tournamentId);
+  if (!tournament) return null;
+
+  const rawParticipants = await getTournamentParticipants(tournamentId);
+  if (rawParticipants.length === 0) return { tournament, participants: [], days: [] };
+
+  const participants = rawParticipants.map((p) => ({
+    user_id: p.user_id,
+    team_id: p.team_id ?? null,
+    display_name: p.profiles?.display_name ?? "Unknown",
+  }));
+
+  const participantIds = participants.map((p) => p.user_id);
+
+  // Fetch all rounds with hole scores within the tournament window
+  const { data: rounds } = await supabase
+    .from("rounds")
+    .select("*, hole_scores(*)")
+    .in("user_id", participantIds)
+    .gte("played_date", tournament.start_date)
+    .lte("played_date", tournament.end_date)
+    .order("played_date", { ascending: true });
+
+  if (!rounds || rounds.length === 0) return { tournament, participants, days: [] };
+
+  // Build roundsByDate: date → userId → color → strokes
+  const roundsByDate: Record<string, Record<string, Record<string, number>>> = {};
+  rounds.forEach((r: { played_date: string; user_id: string; hole_scores?: { color: string; strokes: number }[] }) => {
+    if (!roundsByDate[r.played_date]) roundsByDate[r.played_date] = {};
+    roundsByDate[r.played_date][r.user_id] = {};
+    (r.hole_scores ?? []).forEach((hs) => {
+      roundsByDate[r.played_date][r.user_id][hs.color] = hs.strokes;
+    });
+  });
+
+  // Sort participants: by team_id asc (nulls last), then display_name
+  const sortedParticipants = [...participants].sort((a, b) => {
+    if (a.team_id === null && b.team_id !== null) return 1;
+    if (a.team_id !== null && b.team_id === null) return -1;
+    if (a.team_id !== b.team_id) return (a.team_id ?? 0) - (b.team_id ?? 0);
+    return a.display_name.localeCompare(b.display_name);
+  });
+
+  const isBestBall = tournament.format === "best_ball" && tournament.team_size > 1;
+
+  // Group team members by team_id
+  const teamMembers: Record<number, string[]> = {};
+  if (isBestBall) {
+    sortedParticipants.forEach((p) => {
+      if (p.team_id !== null) {
+        if (!teamMembers[p.team_id]) teamMembers[p.team_id] = [];
+        teamMembers[p.team_id].push(p.user_id);
+      }
+    });
+  }
+
+  const days: ScorecardDay[] = Object.keys(roundsByDate).sort().map((date) => {
+    const dayRounds = roundsByDate[date];
+
+    const rows: ScorecardRow[] = HOLE_COLORS.map((color: HoleColor) => {
+      // Determine which cells are "counting" for this color
+      const countingUserIds = new Set<string>();
+
+      if (isBestBall) {
+        // For each team: find the min strokes among team members who played
+        Object.entries(teamMembers).forEach(([, memberIds]) => {
+          const scores = memberIds
+            .filter((uid) => dayRounds[uid]?.[color] !== undefined)
+            .map((uid) => ({ uid, strokes: dayRounds[uid][color] }));
+          if (scores.length === 0) return;
+          const minStrokes = Math.min(...scores.map((s) => s.strokes));
+          scores.filter((s) => s.strokes === minStrokes).forEach((s) => countingUserIds.add(s.uid));
+        });
+      } else {
+        // All formats: everyone who played counts
+        sortedParticipants.forEach((p) => {
+          if (dayRounds[p.user_id]?.[color] !== undefined) countingUserIds.add(p.user_id);
+        });
+      }
+
+      return {
+        color,
+        cells: sortedParticipants.map((p) => ({
+          user_id: p.user_id,
+          display_name: p.display_name,
+          team_id: p.team_id,
+          strokes: dayRounds[p.user_id]?.[color] ?? null,
+          isCounting: countingUserIds.has(p.user_id),
+        })),
+      };
+    });
+
+    // Player raw totals
+    const playerTotals: Record<string, number> = {};
+    sortedParticipants.forEach((p) => {
+      const scores = Object.values(dayRounds[p.user_id] ?? {}) as number[];
+      playerTotals[p.user_id] = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) : 0;
+    });
+
+    // Team best-ball totals (sum of counting scores per color per team)
+    const teamTotals: Record<number, number> = {};
+    if (isBestBall) {
+      Object.entries(teamMembers).forEach(([teamIdStr, memberIds]) => {
+        const teamId = Number(teamIdStr);
+        let total = 0;
+        HOLE_COLORS.forEach((color: HoleColor) => {
+          const scores = memberIds
+            .filter((uid) => dayRounds[uid]?.[color] !== undefined)
+            .map((uid) => dayRounds[uid][color]);
+          if (scores.length > 0) total += Math.min(...scores);
+        });
+        teamTotals[teamId] = total;
+      });
+    }
+
+    return { date, rows, teamTotals, playerTotals };
+  });
+
+  return { tournament, participants: sortedParticipants, days };
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
