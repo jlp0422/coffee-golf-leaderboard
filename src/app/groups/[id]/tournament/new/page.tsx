@@ -14,7 +14,7 @@ export default function CreateTournamentPage() {
   const [format, setFormat] = useState<TournamentFormat>("stroke_play");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [teamSize, setTeamSize] = useState(1);
+  const [teamSize, setTeamSize] = useState(2);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
