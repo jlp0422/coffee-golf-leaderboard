@@ -115,6 +115,28 @@ export interface TournamentParticipant {
   profiles?: Profile;
 }
 
+// --- Tournament Scorecard ---
+
+export interface ScorecardCell {
+  user_id: string;
+  display_name: string;
+  team_id: number | null;
+  strokes: number | null; // null = didn't play that day
+  isCounting: boolean;    // true = this score counts toward the tournament result
+}
+
+export interface ScorecardRow {
+  color: HoleColor;
+  cells: ScorecardCell[]; // ordered: participants grouped by team, then display_name
+}
+
+export interface ScorecardDay {
+  date: string;                          // "YYYY-MM-DD"
+  rows: ScorecardRow[];                  // one per color (5 total)
+  teamTotals: Record<number, number>;    // team_id → best-ball total for the day
+  playerTotals: Record<string, number>;  // user_id → raw 5-hole sum
+}
+
 export interface LeaderboardEntry {
   user_id: string;
   display_name: string;
