@@ -1,9 +1,19 @@
 import { getStats, getRounds } from "@/app/actions";
 import { COLOR_DISPLAY, HOLE_COLORS } from "@/lib/types";
 import Link from "next/link";
+import { headers } from "next/headers";
+import ShareStatsButton from "@/components/ShareStatsButton";
+
+function detectIOS(ua: string): boolean {
+  return /iPhone|iPad|iPod/i.test(ua);
+}
 
 export default async function StatsPage() {
   const [stats, rounds] = await Promise.all([getStats(), getRounds()]);
+
+  const headersList = await headers();
+  const userAgent = headersList.get("user-agent") || "";
+  const isIOS = detectIOS(userAgent);
 
   if (!stats || rounds.length === 0) {
     return (
@@ -44,12 +54,15 @@ export default async function StatsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8 md:py-12">
-      <h1
-        className="text-2xl font-bold text-green-900 mb-6"
-        style={{ fontFamily: "Georgia, serif" }}
-      >
-        Statistics
-      </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1
+          className="text-2xl font-bold text-green-900"
+          style={{ fontFamily: "Georgia, serif" }}
+        >
+          Statistics
+        </h1>
+        {isIOS && <ShareStatsButton />}
+      </div>
 
       {/* Overview cards */}
       <div className="grid grid-cols-3 gap-3 mb-6">
