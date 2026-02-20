@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { parseScore } from "@/lib/parse-score";
 import { localDateStr } from "@/lib/date-utils";
 import { revalidatePath } from "next/cache";
+import { HOLE_COLORS } from "@/lib/types";
 
 export async function submitScore(rawInput: string) {
   const supabase = await createClient();
@@ -152,28 +153,36 @@ export async function getStats() {
     rounds[0]
   );
 
-  // Calculate streak (consecutive days going backwards)
-  // Compare date strings directly — avoids timezone math issues
+  // Calculate streak (consecutive days going backwards from most recent round).
+  // We allow today to be unplayed — streak is measured from the last played date.
+  // e.g. played Mon+Tue, today is Wed → streak is 2 (not 0).
   let currentStreak = 0;
-  const todayDate = new Date();
+  const todayStr = localDateStr(new Date());
+  const mostRecentDate = rounds[0].played_date;
 
-  for (let i = 0; i < rounds.length; i++) {
-    const expectedDate = new Date(todayDate);
-    expectedDate.setDate(expectedDate.getDate() - i);
-    const expectedStr = localDateStr(expectedDate);
+  // Determine offset: 0 if most recent round is today, 1 if it's yesterday, etc.
+  // If the most recent round is older than yesterday the streak is already broken.
+  const todayMs = new Date(todayStr + "T00:00:00").getTime();
+  const mostRecentMs = new Date(mostRecentDate + "T00:00:00").getTime();
+  const daysBehind = Math.round((todayMs - mostRecentMs) / 86_400_000);
 
-    if (rounds[i].played_date === expectedStr) {
-      currentStreak++;
-    } else {
-      break;
+  if (daysBehind <= 1) {
+    for (let i = 0; i < rounds.length; i++) {
+      const expectedDate = new Date(todayStr + "T00:00:00");
+      expectedDate.setDate(expectedDate.getDate() - daysBehind - i);
+      const expectedStr = localDateStr(expectedDate);
+      if (rounds[i].played_date === expectedStr) {
+        currentStreak++;
+      } else {
+        break;
+      }
     }
   }
 
   // Per-color stats
   const colorStats: Record<string, { total: number; count: number; best: number }> = {};
-  const colors = ["blue", "yellow", "red", "purple", "green"];
-  colors.forEach((c) => {
-    colorStats[c] = { total: 0, count: 0, best: 9 };
+  HOLE_COLORS.forEach((c) => {
+    colorStats[c] = { total: 0, count: 0, best: Infinity };
   });
 
   rounds.forEach((round) => {
@@ -190,7 +199,7 @@ export async function getStats() {
   });
 
   const perColor: Record<string, { average: number; best: number; totalRounds: number }> = {};
-  colors.forEach((c) => {
+  HOLE_COLORS.forEach((c) => {
     const cs = colorStats[c];
     perColor[c] = {
       average: cs.count > 0 ? cs.total / cs.count : 0,
