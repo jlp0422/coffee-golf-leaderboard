@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
 import { createClient } from "@/lib/supabase/server";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -43,6 +44,7 @@ export default async function RootLayout({
         <main className={!isAuthPage ? "pb-20 md:pb-0 md:pt-16" : ""}>
           {children}
         </main>
+        <Analytics />
       </body>
     </html>
   );
