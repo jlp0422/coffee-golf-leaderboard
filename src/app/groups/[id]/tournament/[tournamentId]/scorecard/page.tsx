@@ -43,10 +43,10 @@ function ScorecardGrid({
     <div className="overflow-x-auto rounded-xl border border-green-900/10 bg-white">
       <div
         className="grid"
-        style={{ gridTemplateColumns: `120px repeat(${participants.length}, minmax(64px, 1fr))` }}
+        style={{ gridTemplateColumns: `minmax(2rem, max-content) repeat(${participants.length}, minmax(44px, 1fr))` }}
       >
         {/* Top-left corner */}
-        <div className="bg-green-900 px-3 py-2.5 flex items-center">
+        <div className="bg-green-900 px-2 sm:px-3 py-2.5 flex items-center">
           <span className="text-green-100 text-xs font-semibold uppercase tracking-wider">Hole</span>
         </div>
 
@@ -78,10 +78,10 @@ function ScorecardGrid({
           return [
             <div
               key={`label-${color}`}
-              className={`sticky left-0 z-10 bg-white flex items-center gap-2 px-3 py-3 ${borderClass}`}
+              className={`sticky left-0 z-10 bg-white flex items-center justify-center sm:justify-start gap-1.5 px-2 sm:px-3 py-3 ${borderClass}`}
             >
-              <div className={`w-3.5 h-3.5 rounded-sm flex-shrink-0 ${display.bg}`} />
-              <span className="text-sm font-medium text-green-900">{display.label}</span>
+              <span className="text-lg leading-none">{display.emoji}</span>
+              <span className="hidden sm:inline text-sm font-medium text-green-900">{display.label}</span>
             </div>,
 
             ...(row?.cells ?? []).map((cell) => {
@@ -109,7 +109,7 @@ function ScorecardGrid({
         })}
 
         {/* Totals row */}
-        <div className="sticky left-0 z-10 bg-green-50 border-t-2 border-green-900/10 px-3 py-2.5 flex items-center">
+        <div className="sticky left-0 z-10 bg-green-50 border-t-2 border-green-900/10 px-2 sm:px-3 py-2.5 flex items-center">
           <span className="text-xs font-bold text-green-900 uppercase tracking-wider">Total</span>
         </div>
         {participants.map((p) => {
