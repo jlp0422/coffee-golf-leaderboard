@@ -5,6 +5,27 @@ import { revalidatePath } from "next/cache";
 import type { TournamentFormat, ScorecardDay, ScorecardRow, HoleColor } from "@/lib/types";
 import { HOLE_COLORS } from "@/lib/types";
 
+// Shared types for tournament calc functions
+interface CalcParticipant {
+  user_id: string;
+  team_id: number | null;
+  profiles?: { display_name?: string } | null;
+}
+interface CalcRound {
+  user_id: string;
+  played_date: string;
+  total_strokes: number;
+  hole_scores?: { color: string; strokes: number }[];
+}
+interface StandingEntry {
+  user_id: string;
+  display_name: string;
+  team_id: number | null;
+  score: number;
+  rounds_played: number;
+  detail: string;
+}
+
 // ============================================================
 // GROUP ACTIONS
 // ============================================================
@@ -456,7 +477,7 @@ export async function getGroupLeaderboard(groupId: string) {
   > = {};
 
   memberIds.forEach((id) => {
-    statsMap[id] = { total: 0, count: 0, best: 99 };
+    statsMap[id] = { total: 0, count: 0, best: Infinity };
   });
 
   rounds.forEach((r) => {
@@ -485,7 +506,7 @@ export async function getGroupLeaderboard(groupId: string) {
       };
     })
     .sort((a, b) => {
-      // Sort by average, then by rounds played (more = better tiebreak)
+      // Players with no rounds go to the bottom; otherwise sort by average ascending
       if (a.average === 0 && b.average === 0) return 0;
       if (a.average === 0) return 1;
       if (b.average === 0) return -1;
@@ -803,8 +824,7 @@ export async function getTournamentScorecard(tournamentId: string): Promise<{
   return { tournament, participants: sortedParticipants, days };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function calcStrokePlay(participants: any[], rounds: any[]) {
+function calcStrokePlay(participants: CalcParticipant[], rounds: CalcRound[]): StandingEntry[] {
   const stats: Record<string, { total: number; count: number }> = {};
 
   participants.forEach((p) => {
@@ -821,7 +841,7 @@ function calcStrokePlay(participants: any[], rounds: any[]) {
   return participants
     .map((p) => {
       const s = stats[p.user_id];
-      const profile = p.profiles as { display_name: string } | null;
+      const profile = p.profiles ?? null;
       return {
         user_id: p.user_id,
         display_name: profile?.display_name || "Unknown",
@@ -839,8 +859,7 @@ function calcStrokePlay(participants: any[], rounds: any[]) {
     });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function calcMatchPlay(participants: any[], rounds: any[]) {
+function calcMatchPlay(participants: CalcParticipant[], rounds: CalcRound[]): StandingEntry[] {
   // Group rounds by date
   const roundsByDate: Record<string, Record<string, { color: string; strokes: number }[]>> = {};
 
@@ -860,8 +879,6 @@ function calcMatchPlay(participants: any[], rounds: any[]) {
     points[p.user_id] = 0;
   });
 
-  const colors = ["blue", "yellow", "red", "purple", "green"];
-
   Object.values(roundsByDate).forEach((dayRounds) => {
     const playerIds = Object.keys(dayRounds);
     // Compare all pairs
@@ -872,7 +889,7 @@ function calcMatchPlay(participants: any[], rounds: any[]) {
         const aScores = dayRounds[a];
         const bScores = dayRounds[b];
 
-        colors.forEach((color) => {
+        HOLE_COLORS.forEach((color) => {
           const aHole = aScores.find((s) => s.color === color);
           const bHole = bScores.find((s) => s.color === color);
           if (aHole && bHole) {
@@ -890,7 +907,7 @@ function calcMatchPlay(participants: any[], rounds: any[]) {
 
   return participants
     .map((p) => {
-      const profile = p.profiles as { display_name: string } | null;
+      const profile = p.profiles ?? null;
       return {
         user_id: p.user_id,
         display_name: profile?.display_name || "Unknown",
@@ -905,8 +922,7 @@ function calcMatchPlay(participants: any[], rounds: any[]) {
     .sort((a, b) => b.score - a.score);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function calcBestBall(participants: any[], rounds: any[], teamSize: number) {
+function calcBestBall(participants: CalcParticipant[], rounds: CalcRound[], teamSize: number): StandingEntry[] {
   if (teamSize <= 1) return calcStrokePlay(participants, rounds);
 
   // Group by team
@@ -929,8 +945,6 @@ function calcBestBall(participants: any[], rounds: any[], teamSize: number) {
     );
   });
 
-  const colors = ["blue", "yellow", "red", "purple", "green"];
-
   // Calculate best ball per team per day
   const teamScores: Record<number, { total: number; days: number }> = {};
 
@@ -946,13 +960,11 @@ function calcBestBall(participants: any[], rounds: any[], teamSize: number) {
       teamScores[teamId].days++;
 
       // Best score per COLOR across team members
-      colors.forEach((color) => {
-        let best = 9;
-        playingMembers.forEach((id) => {
-          const hole = dayRounds[id]?.find((s) => s.color === color);
-          if (hole && hole.strokes < best) best = hole.strokes;
-        });
-        teamScores[teamId].total += best;
+      HOLE_COLORS.forEach((color) => {
+        const scores = playingMembers
+          .map((id) => dayRounds[id]?.find((s) => s.color === color)?.strokes)
+          .filter((s): s is number => s !== undefined);
+        if (scores.length > 0) teamScores[teamId].total += Math.min(...scores);
       });
     });
   });
@@ -965,7 +977,7 @@ function calcBestBall(participants: any[], rounds: any[], teamSize: number) {
       const memberNames = memberIds
         .map((id) => {
           const p = participants.find((pp: { user_id: string }) => pp.user_id === id);
-          const profile = p?.profiles as { display_name: string } | null;
+          const profile = p?.profiles ?? null;
           return profile?.display_name || "Unknown";
         })
         .join(" & ");
@@ -986,8 +998,7 @@ function calcBestBall(participants: any[], rounds: any[], teamSize: number) {
     });
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function calcSkins(participants: any[], rounds: any[]) {
+function calcSkins(participants: CalcParticipant[], rounds: CalcRound[]): StandingEntry[] {
   const roundsByDate: Record<string, Record<string, { color: string; strokes: number }[]>> = {};
   rounds.forEach((r) => {
     if (!roundsByDate[r.played_date]) roundsByDate[r.played_date] = {};
@@ -999,7 +1010,6 @@ function calcSkins(participants: any[], rounds: any[]) {
     );
   });
 
-  const colors = ["blue", "yellow", "red", "purple", "green"];
   const skins: Record<string, number> = {};
   participants.forEach((p) => {
     skins[p.user_id] = 0;
@@ -1014,7 +1024,7 @@ function calcSkins(participants: any[], rounds: any[]) {
     const playerIds = Object.keys(dayRounds);
     if (playerIds.length < 2) return;
 
-    colors.forEach((color) => {
+    HOLE_COLORS.forEach((color) => {
       const scores: { userId: string; strokes: number }[] = [];
       playerIds.forEach((id) => {
         const hole = dayRounds[id]?.find((s) => s.color === color);
@@ -1042,7 +1052,7 @@ function calcSkins(participants: any[], rounds: any[]) {
 
   return participants
     .map((p) => {
-      const profile = p.profiles as { display_name: string } | null;
+      const profile = p.profiles ?? null;
       return {
         user_id: p.user_id,
         display_name: profile?.display_name || "Unknown",
