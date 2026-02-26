@@ -15,6 +15,7 @@ import {
   removeParticipant,
 } from "../../../actions";
 import { FORMAT_DISPLAY, type TournamentFormat } from "@/lib/types";
+import { getTournamentStatus, statusBadgeClass } from "@/lib/tournament-utils";
 import { createClient } from "@/lib/supabase/client";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
@@ -175,14 +176,7 @@ export default function TournamentDetailPage() {
   const formatInfo = FORMAT_DISPLAY[tournament.format];
   const isTeamFormat = tournament.team_size > 1;
 
-  // Derive status from dates so it stays current without DB updates
-  const today = new Date().toISOString().slice(0, 10);
-  const effectiveStatus =
-    today > tournament.end_date
-      ? "Final"
-      : today >= tournament.start_date
-      ? "Live"
-      : "Upcoming";
+  const effectiveStatus = getTournamentStatus(tournament.start_date, tournament.end_date);
   const isMatchPlay = tournament.format === "match_play";
   const scoreLabel = isMatchPlay
     ? scoreView === "classic" ? "Holes" : "Pts"
@@ -231,15 +225,7 @@ export default function TournamentDetailPage() {
           >
             {tournament.name}
           </h1>
-          <span
-            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-              effectiveStatus === "Live"
-                ? "bg-green-100 text-green-700"
-                : effectiveStatus === "Upcoming"
-                ? "bg-blue-100 text-blue-700"
-                : "bg-gray-100 text-gray-600"
-            }`}
-          >
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusBadgeClass(effectiveStatus)}`}>
             {effectiveStatus}
           </span>
         </div>
