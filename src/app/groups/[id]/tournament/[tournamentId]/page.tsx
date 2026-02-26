@@ -190,6 +190,12 @@ export default function TournamentDetailPage() {
     return `${Math.abs(net)} DN`;
   }
 
+  function classicScoreColor(net: number): string {
+    if (net > 0) return "text-green-700";
+    if (net < 0) return "text-red-600";
+    return "text-green-900/50";
+  }
+
   const displayedStandings = isMatchPlay && scoreView === "classic"
     ? [...standings].sort((a, b) => (b.classic_score ?? 0) - (a.classic_score ?? 0))
     : standings;
@@ -396,11 +402,7 @@ export default function TournamentDetailPage() {
                   <div
                     className={`text-lg font-bold ${
                       isMatchPlay && scoreView === "classic"
-                        ? (entry.classic_score ?? 0) > 0
-                          ? "text-green-700"
-                          : (entry.classic_score ?? 0) < 0
-                          ? "text-red-600"
-                          : "text-green-900/50"
+                        ? classicScoreColor(entry.classic_score ?? 0)
                         : "text-green-900"
                     }`}
                     style={{ fontFamily: "Georgia, serif" }}
