@@ -179,10 +179,10 @@ export default function TournamentDetailPage() {
   const today = new Date().toISOString().slice(0, 10);
   const effectiveStatus =
     today > tournament.end_date
-      ? "completed"
+      ? "Final"
       : today >= tournament.start_date
-      ? "live"
-      : "upcoming";
+      ? "Live"
+      : "Upcoming";
   const isMatchPlay = tournament.format === "match_play";
   const scoreLabel = isMatchPlay
     ? scoreView === "classic" ? "Holes" : "Pts"
@@ -233,9 +233,9 @@ export default function TournamentDetailPage() {
           </h1>
           <span
             className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-              effectiveStatus === "live"
+              effectiveStatus === "Live"
                 ? "bg-green-100 text-green-700"
-                : effectiveStatus === "upcoming"
+                : effectiveStatus === "Upcoming"
                 ? "bg-blue-100 text-blue-700"
                 : "bg-gray-100 text-gray-600"
             }`}

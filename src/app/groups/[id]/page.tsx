@@ -396,10 +396,10 @@ export default function GroupDetailPage() {
               const today = new Date().toISOString().slice(0, 10);
               const effectiveStatus =
                 today > t.end_date
-                  ? "completed"
+                  ? "Final"
                   : today >= t.start_date
-                  ? "live"
-                  : "upcoming";
+                  ? "Live"
+                  : "Upcoming";
               return (
               <Link
                 key={t.id}
@@ -415,9 +415,9 @@ export default function GroupDetailPage() {
                   </h3>
                   <span
                     className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      effectiveStatus === "live"
+                      effectiveStatus === "Live"
                         ? "bg-green-100 text-green-700"
-                        : effectiveStatus === "upcoming"
+                        : effectiveStatus === "Upcoming"
                         ? "bg-blue-100 text-blue-700"
                         : "bg-gray-100 text-gray-600"
                     }`}
