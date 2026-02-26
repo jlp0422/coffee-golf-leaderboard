@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { getRounds, getStats } from "@/app/actions";
+
+export const metadata: Metadata = { title: "Coffee Golf - Leaderboard" };
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import ScoreCard from "@/components/ScoreCard";

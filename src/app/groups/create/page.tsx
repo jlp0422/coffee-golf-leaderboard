@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createGroup } from "../actions";
 
 export default function CreateGroupPage() {
+  useEffect(() => { document.title = "Coffee Golf - Create Group"; }, []);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

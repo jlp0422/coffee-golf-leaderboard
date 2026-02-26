@@ -15,6 +15,7 @@ import {
   removeParticipant,
 } from "../../../actions";
 import { FORMAT_DISPLAY, type TournamentFormat } from "@/lib/types";
+import { getTournamentStatus, statusBadgeClass } from "@/lib/tournament-utils";
 import { createClient } from "@/lib/supabase/client";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
@@ -25,6 +26,7 @@ interface StandingEntry {
   score: number;
   rounds_played: number;
   detail: string;
+  classic_score?: number;
 }
 
 interface TournamentData {
@@ -68,6 +70,7 @@ export default function TournamentDetailPage() {
   const [activeView, setActiveView] = useState<"standings" | "pairings">(
     "standings"
   );
+  const [scoreView, setScoreView] = useState<"pts" | "classic">("pts");
 
   const load = async () => {
     const supabase = createClient();
@@ -86,6 +89,7 @@ export default function TournamentDetailPage() {
     if (standingsData) {
       setTournament(standingsData.tournament as TournamentData);
       setStandings(standingsData.standings as StandingEntry[]);
+      document.title = `Coffee Golf - ${standingsData.tournament.name}`;
     }
 
     setParticipants(parts as ParticipantData[]);
@@ -171,12 +175,30 @@ export default function TournamentDetailPage() {
 
   const formatInfo = FORMAT_DISPLAY[tournament.format];
   const isTeamFormat = tournament.team_size > 1;
-  const scoreLabel =
-    tournament.format === "match_play"
-      ? "Pts"
-      : tournament.format === "skins"
-      ? "Skins"
-      : "Strokes";
+
+  const effectiveStatus = getTournamentStatus(tournament.start_date, tournament.end_date);
+  const isMatchPlay = tournament.format === "match_play";
+  const scoreLabel = isMatchPlay
+    ? scoreView === "classic" ? "Holes" : "Pts"
+    : tournament.format === "skins"
+    ? "Skins"
+    : "Strokes";
+
+  function formatClassicScore(net: number): string {
+    if (net === 0) return "AS";
+    if (net > 0) return `${net} UP`;
+    return `${Math.abs(net)} DN`;
+  }
+
+  function classicScoreColor(net: number): string {
+    if (net > 0) return "text-green-700";
+    if (net < 0) return "text-red-600";
+    return "text-green-900/50";
+  }
+
+  const displayedStandings = isMatchPlay && scoreView === "classic"
+    ? [...standings].sort((a, b) => (b.classic_score ?? 0) - (a.classic_score ?? 0))
+    : standings;
 
   // Group participants by team for pairing view
   const teamGroups: Record<number, ParticipantData[]> = {};
@@ -209,16 +231,8 @@ export default function TournamentDetailPage() {
           >
             {tournament.name}
           </h1>
-          <span
-            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-              tournament.status === "active"
-                ? "bg-green-100 text-green-700"
-                : tournament.status === "upcoming"
-                ? "bg-blue-100 text-blue-700"
-                : "bg-gray-100 text-gray-600"
-            }`}
-          >
-            {tournament.status}
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusBadgeClass(effectiveStatus)}`}>
+            {effectiveStatus}
           </span>
         </div>
         <div className="text-sm text-green-800/60">
@@ -327,16 +341,35 @@ export default function TournamentDetailPage() {
             >
               Standings
             </span>
-            <span className="text-green-300 text-xs">{scoreLabel}</span>
+            <div className="flex items-center gap-2">
+              {isMatchPlay && (
+                <div className="flex bg-green-800 rounded-lg p-0.5 gap-0.5">
+                  {(["pts", "classic"] as const).map((view) => (
+                    <button
+                      key={view}
+                      onClick={() => setScoreView(view)}
+                      className={`w-14 py-1 rounded-md text-xs font-medium transition-colors text-center ${
+                        scoreView === view
+                          ? "bg-white text-green-900"
+                          : "text-green-300 hover:text-white"
+                      }`}
+                    >
+                      {view === "pts" ? "Pts" : "Classic"}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <span className="text-green-300 text-xs w-10 text-right">{scoreLabel}</span>
+            </div>
           </div>
 
-          {standings.length === 0 ? (
+          {displayedStandings.length === 0 ? (
             <div className="p-8 text-center text-green-800/40 text-sm">
               No rounds played yet in the tournament period
             </div>
           ) : (
             <div className="divide-y divide-green-900/5">
-              {standings.map((entry, i) => (
+              {displayedStandings.map((entry, i) => (
                 <div
                   key={entry.user_id + (entry.team_id || "")}
                   className={`px-4 py-3 flex items-center gap-3 ${
@@ -361,14 +394,22 @@ export default function TournamentDetailPage() {
                       {entry.display_name}
                     </div>
                     <div className="text-[10px] text-green-800/40">
-                      {entry.detail}
+                      {isMatchPlay && scoreView === "classic"
+                        ? `${entry.classic_score !== undefined && entry.classic_score > 0 ? "+" : ""}${entry.classic_score ?? 0} holes vs field`
+                        : entry.detail}
                     </div>
                   </div>
                   <div
-                    className="text-lg font-bold text-green-900"
+                    className={`text-lg font-bold ${
+                      isMatchPlay && scoreView === "classic"
+                        ? classicScoreColor(entry.classic_score ?? 0)
+                        : "text-green-900"
+                    }`}
                     style={{ fontFamily: "Georgia, serif" }}
                   >
-                    {entry.score}
+                    {isMatchPlay && scoreView === "classic"
+                      ? formatClassicScore(entry.classic_score ?? 0)
+                      : entry.score}
                   </div>
                 </div>
               ))}

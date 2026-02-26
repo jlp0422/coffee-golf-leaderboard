@@ -33,6 +33,7 @@ export default function ProfilePage() {
     setLoading(false);
   };
 
+  useEffect(() => { document.title = "Coffee Golf - Profile"; }, []);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load(); }, []);
 

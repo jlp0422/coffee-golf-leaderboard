@@ -23,6 +23,7 @@ export default function HistoryPage() {
     setLoading(false);
   };
 
+  useEffect(() => { document.title = "Coffee Golf - History"; }, []);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void loadRounds(); }, []);
 

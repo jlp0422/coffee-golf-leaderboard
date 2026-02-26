@@ -17,6 +17,7 @@ import {
 } from "../actions";
 import type { TournamentFormat } from "@/lib/types";
 import { FORMAT_DISPLAY } from "@/lib/types";
+import { getTournamentStatus, statusBadgeClass } from "@/lib/tournament-utils";
 
 interface GroupData {
   id: string;
@@ -108,7 +109,10 @@ export default function GroupDetailPage() {
     setMembers(m as MemberData[]);
     setLeaderboard(lb as LeaderboardEntry[]);
     setTournaments(t as TournamentData[]);
-    if (g) setNewName(g.name);
+    if (g) {
+      setNewName(g.name);
+      document.title = `Coffee Golf - ${g.name}`;
+    }
     setLoading(false);
   };
 
@@ -389,7 +393,9 @@ export default function GroupDetailPage() {
               No tournaments yet
             </div>
           ) : (
-            tournaments.map((t) => (
+            tournaments.map((t) => {
+              const effectiveStatus = getTournamentStatus(t.start_date, t.end_date);
+              return (
               <Link
                 key={t.id}
                 href={`/groups/${groupId}/tournament/${t.id}`}
@@ -402,16 +408,8 @@ export default function GroupDetailPage() {
                   >
                     {t.name}
                   </h3>
-                  <span
-                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      t.status === "active"
-                        ? "bg-green-100 text-green-700"
-                        : t.status === "upcoming"
-                        ? "bg-blue-100 text-blue-700"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {t.status}
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusBadgeClass(effectiveStatus)}`}>
+                    {effectiveStatus}
                   </span>
                 </div>
                 <div className="text-xs text-green-800/50">
@@ -427,7 +425,8 @@ export default function GroupDetailPage() {
                   )}
                 </div>
               </Link>
-            ))
+              );
+            })
           )}
         </div>
       )}

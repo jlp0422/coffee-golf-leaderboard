@@ -18,6 +18,7 @@ export default function GroupsPage() {
   const [groups, setGroups] = useState<GroupWithMeta[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useEffect(() => { document.title = "Coffee Golf - My Groups"; }, []);
   useEffect(() => {
     void (async () => {
       const data = await getMyGroups();
