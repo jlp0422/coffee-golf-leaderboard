@@ -367,7 +367,7 @@ export default function TournamentDetailPage() {
                   ))}
                 </div>
               )}
-              <span className="text-green-300 text-xs">{scoreLabel}</span>
+              <span className="text-green-300 text-xs w-10 text-right">{scoreLabel}</span>
             </div>
           </div>
 
