@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => { document.title = "Coffee Golf - Sign In"; }, []);
+
   // Auto-redirect to dev-login route when env var is set
   useEffect(() => {
     if (DEV_EMAIL) {

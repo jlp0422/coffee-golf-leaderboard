@@ -108,7 +108,10 @@ export default function GroupDetailPage() {
     setMembers(m as MemberData[]);
     setLeaderboard(lb as LeaderboardEntry[]);
     setTournaments(t as TournamentData[]);
-    if (g) setNewName(g.name);
+    if (g) {
+      setNewName(g.name);
+      document.title = `Coffee Golf - ${g.name}`;
+    }
     setLoading(false);
   };
 
@@ -389,7 +392,15 @@ export default function GroupDetailPage() {
               No tournaments yet
             </div>
           ) : (
-            tournaments.map((t) => (
+            tournaments.map((t) => {
+              const today = new Date().toISOString().slice(0, 10);
+              const effectiveStatus =
+                today > t.end_date
+                  ? "completed"
+                  : today >= t.start_date
+                  ? "live"
+                  : "upcoming";
+              return (
               <Link
                 key={t.id}
                 href={`/groups/${groupId}/tournament/${t.id}`}
@@ -404,14 +415,14 @@ export default function GroupDetailPage() {
                   </h3>
                   <span
                     className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      t.status === "active"
+                      effectiveStatus === "live"
                         ? "bg-green-100 text-green-700"
-                        : t.status === "upcoming"
+                        : effectiveStatus === "upcoming"
                         ? "bg-blue-100 text-blue-700"
                         : "bg-gray-100 text-gray-600"
                     }`}
                   >
-                    {t.status}
+                    {effectiveStatus}
                   </span>
                 </div>
                 <div className="text-xs text-green-800/50">
@@ -427,7 +438,8 @@ export default function GroupDetailPage() {
                   )}
                 </div>
               </Link>
-            ))
+              );
+            })
           )}
         </div>
       )}

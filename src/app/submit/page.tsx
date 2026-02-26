@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { parseScore, type ParsedRound } from "@/lib/parse-score";
 import { submitScore } from "@/app/actions";
 import ScorePreview from "@/components/ScorePreview";
 import { useRouter } from "next/navigation";
 
 export default function SubmitPage() {
+  useEffect(() => { document.title = "Coffee Golf - Submit Score"; }, []);
   const [input, setInput] = useState("");
   const [parsed, setParsed] = useState<ParsedRound | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);

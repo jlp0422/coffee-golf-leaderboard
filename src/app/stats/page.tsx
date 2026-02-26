@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { getStats, getRounds } from "@/app/actions";
+
+export const metadata: Metadata = { title: "Coffee Golf - Stats" };
 import { COLOR_DISPLAY, HOLE_COLORS } from "@/lib/types";
 import Link from "next/link";
 import { headers } from "next/headers";

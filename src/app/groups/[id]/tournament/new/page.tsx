@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { createTournament } from "../../../actions";
 import { FORMAT_DISPLAY, type TournamentFormat } from "@/lib/types";
 
 export default function CreateTournamentPage() {
+  useEffect(() => { document.title = "Coffee Golf - New Tournament"; }, []);
   const params = useParams();
   const router = useRouter();
   const groupId = params.id as string;

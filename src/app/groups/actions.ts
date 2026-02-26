@@ -24,6 +24,7 @@ interface StandingEntry {
   score: number;
   rounds_played: number;
   detail: string;
+  classic_score?: number; // match_play only: net holes won - lost vs all opponents
 }
 
 // ============================================================
@@ -873,10 +874,12 @@ function calcMatchPlay(participants: CalcParticipant[], rounds: CalcRound[]): St
     );
   });
 
-  // Calculate match play points
+  // Calculate match play points and classic up/down score
   const points: Record<string, number> = {};
+  const netHoles: Record<string, number> = {}; // classic: wins - losses
   participants.forEach((p) => {
     points[p.user_id] = 0;
+    netHoles[p.user_id] = 0;
   });
 
   Object.values(roundsByDate).forEach((dayRounds) => {
@@ -893,11 +896,18 @@ function calcMatchPlay(participants: CalcParticipant[], rounds: CalcRound[]): St
           const aHole = aScores.find((s) => s.color === color);
           const bHole = bScores.find((s) => s.color === color);
           if (aHole && bHole) {
-            if (aHole.strokes < bHole.strokes) points[a] += 1;
-            else if (bHole.strokes < aHole.strokes) points[b] += 1;
-            else {
+            if (aHole.strokes < bHole.strokes) {
+              points[a] += 1;
+              netHoles[a] += 1;
+              netHoles[b] -= 1;
+            } else if (bHole.strokes < aHole.strokes) {
+              points[b] += 1;
+              netHoles[b] += 1;
+              netHoles[a] -= 1;
+            } else {
               points[a] += 0.5;
               points[b] += 0.5;
+              // halved hole: no change to netHoles
             }
           }
         });
@@ -908,15 +918,18 @@ function calcMatchPlay(participants: CalcParticipant[], rounds: CalcRound[]): St
   return participants
     .map((p) => {
       const profile = p.profiles ?? null;
+      const pts = points[p.user_id] || 0;
+      const net = netHoles[p.user_id] || 0;
       return {
         user_id: p.user_id,
         display_name: profile?.display_name || "Unknown",
         team_id: p.team_id,
-        score: points[p.user_id] || 0,
+        score: pts,
         rounds_played: Object.values(roundsByDate).filter(
           (dr) => dr[p.user_id]
         ).length,
-        detail: `${points[p.user_id] || 0} pts`,
+        detail: `${pts} pts`,
+        classic_score: net,
       };
     })
     .sort((a, b) => b.score - a.score);

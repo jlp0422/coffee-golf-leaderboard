@@ -164,9 +164,12 @@ export default function ScorecardPage() {
   useEffect(() => {
     getTournamentScorecard(tournamentId).then((result) => {
       setData(result);
-      if (result && result.days.length > 0) {
-        // Default to most recent day
-        setSelectedDate(result.days[result.days.length - 1].date);
+      if (result) {
+        document.title = `Coffee Golf - ${result.tournament.name} Scorecard`;
+        if (result.days.length > 0) {
+          // Default to most recent day
+          setSelectedDate(result.days[result.days.length - 1].date);
+        }
       }
       setLoading(false);
     });
