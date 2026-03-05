@@ -191,6 +191,25 @@ export default async function StatsPage() {
         </div>
       </div>
 
+      {/* Record Book link */}
+      <Link
+        href="/records"
+        className="flex items-center justify-between bg-white rounded-xl border border-green-900/10 px-4 py-3.5 mb-6 hover:shadow-md transition-shadow group"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">&#128218;</span>
+          <div>
+            <div className="font-semibold text-green-900 text-sm" style={{ fontFamily: "Georgia, serif" }}>
+              Record Book
+            </div>
+            <div className="text-xs text-green-800/50">Best rounds &amp; top scores all time</div>
+          </div>
+        </div>
+        <span className="text-green-700 group-hover:text-green-900 text-sm font-medium transition-colors">
+          View &rarr;
+        </span>
+      </Link>
+
       {/* Recent trend */}
       {last10.length > 1 && (
         <div className="bg-white rounded-xl border border-green-900/10 p-4">

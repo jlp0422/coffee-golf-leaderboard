@@ -254,3 +254,44 @@ create index idx_rounds_user_date on rounds(user_id, played_date desc);
 create index idx_hole_scores_round on hole_scores(round_id);
 create index idx_group_members_user on group_members(user_id);
 create index idx_tournament_participants_tournament on tournament_participants(tournament_id);
+
+-- Record Book: supports DISTINCT ON per-user best round query
+create index idx_rounds_user_strokes on rounds(user_id, total_strokes asc, played_date asc);
+
+-- ============================================================
+-- 6. RECORD BOOK FUNCTION (run in Supabase SQL editor)
+-- ============================================================
+-- security definer bypasses RLS to allow cross-user reads.
+-- Returns only leaderboard-safe fields (no private data).
+
+create or replace function get_rounds_for_records()
+returns table (
+  round_id      uuid,
+  user_id       uuid,
+  display_name  text,
+  played_date   date,
+  total_strokes int,
+  hole_scores   json
+)
+language sql security definer stable as $$
+  select
+    r.id as round_id,
+    r.user_id,
+    p.display_name,
+    r.played_date,
+    r.total_strokes,
+    (
+      select json_agg(
+        json_build_object(
+          'color', hs.color,
+          'strokes', hs.strokes,
+          'hole_number', hs.hole_number
+        )
+      )
+      from hole_scores hs
+      where hs.round_id = r.id
+    ) as hole_scores
+  from rounds r
+  join profiles p on p.id = r.user_id
+  order by r.total_strokes asc, r.played_date asc
+$$;

@@ -125,6 +125,77 @@ export async function getRounds() {
   return data || [];
 }
 
+// ============================================================
+// RECORD BOOK
+// ============================================================
+
+type RawRecordRow = {
+  round_id: string;
+  user_id: string;
+  display_name: string;
+  played_date: string;
+  total_strokes: number;
+  hole_scores: { color: string; strokes: number; hole_number: number }[] | null;
+};
+
+export type RecordEntry = RawRecordRow & { rank: number };
+export type RecordSet = { byPlayer: RecordEntry[]; topRounds: RecordEntry[] };
+export type RecordsData = { sevenDay: RecordSet; thirtyDay: RecordSet; allTime: RecordSet };
+
+function assignRanks(sorted: RawRecordRow[]): RecordEntry[] {
+  let rank = 1;
+  return sorted.map((entry, i) => {
+    if (i > 0 && entry.total_strokes !== sorted[i - 1].total_strokes) rank = i + 1;
+    return { ...entry, rank };
+  });
+}
+
+function computeRecordSet(rows: RawRecordRow[], since: Date | null): RecordSet {
+  const filtered = since
+    ? rows.filter((r) => new Date(r.played_date + "T00:00:00") >= since)
+    : rows;
+
+  // Best by Player: one entry per user — lowest strokes, earliest date breaks ties
+  const bestByUser = new Map<string, RawRecordRow>();
+  filtered.forEach((r) => {
+    const existing = bestByUser.get(r.user_id);
+    if (
+      !existing ||
+      r.total_strokes < existing.total_strokes ||
+      (r.total_strokes === existing.total_strokes && r.played_date < existing.played_date)
+    ) {
+      bestByUser.set(r.user_id, r);
+    }
+  });
+  const byPlayerSorted = [...bestByUser.values()].sort(
+    (a, b) => a.total_strokes - b.total_strokes || a.played_date.localeCompare(b.played_date)
+  );
+  const byPlayer = assignRanks(byPlayerSorted).filter((e) => e.rank <= 10);
+
+  // Top Rounds: global — rows already sorted by total_strokes asc, played_date asc from RPC
+  const topRounds = assignRanks(filtered).filter((e) => e.rank <= 10);
+
+  return { byPlayer, topRounds };
+}
+
+export async function getRecords(): Promise<RecordsData | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_rounds_for_records");
+  if (error || !data) return null;
+
+  const now = new Date();
+  const since7 = new Date(now);
+  since7.setDate(now.getDate() - 7);
+  const since30 = new Date(now);
+  since30.setDate(now.getDate() - 30);
+
+  return {
+    sevenDay: computeRecordSet(data as RawRecordRow[], since7),
+    thirtyDay: computeRecordSet(data as RawRecordRow[], since30),
+    allTime: computeRecordSet(data as RawRecordRow[], null),
+  };
+}
+
 export async function getStats() {
   const supabase = await createClient();
 
