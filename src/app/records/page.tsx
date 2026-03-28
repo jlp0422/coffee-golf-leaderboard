@@ -208,24 +208,14 @@ export default function RecordsPage() {
           No records available yet.
         </div>
       ) : (
-        <div className="space-y-6">
-          <RecordSection
-            title="Best by Player"
-            entries={periodData?.byPlayer ?? []}
-            currentUserId={currentUserId}
-            expandedIds={expandedIds}
-            onToggle={toggleExpand}
-            emptyMessage="No rounds played in this period."
-          />
-          <RecordSection
-            title="Top Rounds"
-            entries={periodData?.topRounds ?? []}
-            currentUserId={currentUserId}
-            expandedIds={expandedIds}
-            onToggle={toggleExpand}
-            emptyMessage="No rounds played in this period."
-          />
-        </div>
+        <RecordSection
+          title="Top Rounds"
+          entries={periodData?.topRounds ?? []}
+          currentUserId={currentUserId}
+          expandedIds={expandedIds}
+          onToggle={toggleExpand}
+          emptyMessage="No rounds played in this period."
+        />
       )}
     </div>
   );
