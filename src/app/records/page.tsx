@@ -89,19 +89,15 @@ function RecordRow({
 }
 
 function RecordSection({
-  title,
   entries,
   currentUserId,
   expandedIds,
   onToggle,
-  emptyMessage,
 }: {
-  title: string;
   entries: RecordEntry[];
   currentUserId: string | null;
   expandedIds: Set<string>;
   onToggle: (id: string) => void;
-  emptyMessage: string;
 }) {
   return (
     <div className="bg-white rounded-xl border border-green-900/10 overflow-hidden">
@@ -110,11 +106,11 @@ function RecordSection({
           className="text-green-100 text-sm font-medium"
           style={{ fontFamily: "Georgia, serif" }}
         >
-          {title}
+          Top Rounds
         </span>
       </div>
       {entries.length === 0 ? (
-        <div className="p-8 text-center text-green-800/40 text-sm">{emptyMessage}</div>
+        <div className="p-8 text-center text-green-800/40 text-sm">No rounds played in this period.</div>
       ) : (
         <div className="divide-y divide-green-900/5">
           {entries.map((entry) => (
@@ -209,12 +205,10 @@ export default function RecordsPage() {
         </div>
       ) : (
         <RecordSection
-          title="Top Rounds"
-          entries={periodData?.topRounds ?? []}
+          entries={periodData ?? []}
           currentUserId={currentUserId}
           expandedIds={expandedIds}
           onToggle={toggleExpand}
-          emptyMessage="No rounds played in this period."
         />
       )}
     </div>

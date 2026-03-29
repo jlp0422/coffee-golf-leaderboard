@@ -139,8 +139,7 @@ type RawRecordRow = {
 };
 
 export type RecordEntry = RawRecordRow & { rank: number };
-export type RecordSet = { byPlayer: RecordEntry[]; topRounds: RecordEntry[] };
-export type RecordsData = { sevenDay: RecordSet; thirtyDay: RecordSet; allTime: RecordSet };
+export type RecordsData = { sevenDay: RecordEntry[]; thirtyDay: RecordEntry[]; allTime: RecordEntry[] };
 
 function assignRanks(sorted: RawRecordRow[]): RecordEntry[] {
   let rank = 1;
@@ -150,32 +149,12 @@ function assignRanks(sorted: RawRecordRow[]): RecordEntry[] {
   });
 }
 
-function computeRecordSet(rows: RawRecordRow[], since: Date | null): RecordSet {
+function computeTopRounds(rows: RawRecordRow[], since: Date | null): RecordEntry[] {
   const filtered = since
     ? rows.filter((r) => new Date(r.played_date + "T00:00:00") >= since)
     : rows;
-
-  // Best by Player: one entry per user — lowest strokes, earliest date breaks ties
-  const bestByUser = new Map<string, RawRecordRow>();
-  filtered.forEach((r) => {
-    const existing = bestByUser.get(r.user_id);
-    if (
-      !existing ||
-      r.total_strokes < existing.total_strokes ||
-      (r.total_strokes === existing.total_strokes && r.played_date < existing.played_date)
-    ) {
-      bestByUser.set(r.user_id, r);
-    }
-  });
-  const byPlayerSorted = [...bestByUser.values()].sort(
-    (a, b) => a.total_strokes - b.total_strokes || a.played_date.localeCompare(b.played_date)
-  );
-  const byPlayer = assignRanks(byPlayerSorted).filter((e) => e.rank <= 10);
-
-  // Top Rounds: global — rows already sorted by total_strokes asc, played_date asc from RPC
-  const topRounds = assignRanks(filtered).filter((e) => e.rank <= 10);
-
-  return { byPlayer, topRounds };
+  // Rows already sorted by total_strokes asc, played_date asc from RPC
+  return assignRanks(filtered).filter((e) => e.rank <= 10);
 }
 
 export async function getRecords(): Promise<RecordsData | null> {
@@ -190,9 +169,9 @@ export async function getRecords(): Promise<RecordsData | null> {
   since30.setDate(now.getDate() - 30);
 
   return {
-    sevenDay: computeRecordSet(data as RawRecordRow[], since7),
-    thirtyDay: computeRecordSet(data as RawRecordRow[], since30),
-    allTime: computeRecordSet(data as RawRecordRow[], null),
+    sevenDay: computeTopRounds(data as RawRecordRow[], since7),
+    thirtyDay: computeTopRounds(data as RawRecordRow[], since30),
+    allTime: computeTopRounds(data as RawRecordRow[], null),
   };
 }
 
