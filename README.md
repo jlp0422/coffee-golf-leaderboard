@@ -9,6 +9,7 @@ A leaderboard app for tracking [Coffee Golf](https://www.coffeegolf.app) scores 
 - **Auto-parse scores** — paste your Coffee Golf share text and it extracts everything automatically
 - **Score history** — view all past rounds grouped by month, delete any entry
 - **Statistics** — average score, best round, rounds played, current streak, per-color averages and bests, score distribution chart, last-10-rounds trend
+- **Record Book** — top 10 rounds all time across all players, filterable by 7 days / 30 days / all time, with expandable scorecards
 - **Profile** — set a display name and upload an avatar
 
 ### Groups & Tournaments
@@ -16,9 +17,10 @@ A leaderboard app for tracking [Coffee Golf](https://www.coffeegolf.app) scores 
 - **Group leaderboard** — ranked by average score across all rounds in the scoring window
 - **Tournaments** — create and run competitions within a group in four formats:
   - **Stroke Play** — lowest total strokes wins
-  - **Match Play** — hole-by-hole head-to-head
+  - **Match Play** — hole-by-hole head-to-head; toggle between total strokes and classic match play scoring (1 UP, 2 DN, AS)
   - **Best Ball** — team format; best score per color hole counts (not by hole order)
   - **Skins** — win individual holes, ties carry over
+- **Tournament status** — Live / Upcoming / Final derived automatically from start and end dates
 - **Team pairings** — group owners/admins assign players to teams before a tournament starts
 - **Participant management** — add/remove members from a tournament, reassign teams
 
@@ -58,31 +60,40 @@ src/
 │   ├── submit/page.tsx             # Paste & submit score
 │   ├── history/page.tsx            # Round history
 │   ├── stats/page.tsx              # Stats & charts
+│   ├── records/page.tsx            # Record Book (top rounds across all players)
 │   ├── profile/page.tsx            # Edit display name, upload avatar
 │   ├── groups/
 │   │   ├── page.tsx                # My groups list
 │   │   ├── create/page.tsx         # Create group
 │   │   ├── join/page.tsx           # Join via invite code
+│   │   ├── actions.ts              # Server actions: groups, tournaments
 │   │   ├── [id]/page.tsx           # Group detail (leaderboard, members, tournaments, settings)
 │   │   └── [id]/tournament/
 │   │       ├── new/page.tsx        # Create tournament
-│   │       └── [tournamentId]/page.tsx  # Tournament detail (standings, pairings)
-│   ├── actions.ts                  # Server actions: scores, stats
-│   └── groups/actions.ts           # Server actions: groups, tournaments
+│   │       ├── [tournamentId]/page.tsx        # Tournament standings & pairings
+│   │       └── [tournamentId]/scorecard/page.tsx  # Individual scorecard view
+│   └── actions.ts                  # Server actions: scores, stats, record book
 ├── components/
 │   ├── Nav.tsx                     # Responsive nav (bottom on mobile, top on desktop)
 │   ├── ScoreCard.tsx               # Reusable scorecard component
-│   └── ScorePreview.tsx            # Live parse preview before submission
+│   ├── ScorePreview.tsx            # Live parse preview before submission
+│   ├── ShareStatsButton.tsx        # iOS share sheet integration
+│   ├── LoadingSpinner.tsx          # Loading state indicator
+│   ├── Greeting.tsx                # Time-of-day greeting on dashboard
+│   └── TodaySection.tsx            # Today's round status on dashboard
 └── lib/
     ├── parse-score.ts              # Core score parser
-    ├── parse-score.test.ts         # 7 Jest tests
+    ├── parse-score.test.ts         # Jest tests for the parser
     ├── types.ts                    # Shared TypeScript types
+    ├── date-utils.ts               # Timezone-safe date helpers
+    ├── tournament-utils.ts         # Tournament status + badge helpers
     └── supabase/                   # Supabase client helpers
 supabase/
-├── schema.sql                      # Full DB schema with RLS policies
+├── schema.sql                      # Full DB schema with RLS policies + get_rounds_for_records()
 ├── fix-recursion.sql               # Migration: fix group_members RLS recursion
 ├── add-co-member-visibility.sql    # Migration: co-member visibility via security definer
-└── add-update-policies.sql         # Migration: group/tournament update & delete policies
+├── add-update-policies.sql         # Migration: group/tournament update & delete policies
+└── add-avatar-storage-policies.sql # Migration: avatar storage bucket policies
 ```
 
 ## Getting Started
@@ -99,6 +110,7 @@ In the Supabase SQL editor, run `supabase/schema.sql` in full. Then run the migr
 supabase/fix-recursion.sql
 supabase/add-co-member-visibility.sql
 supabase/add-update-policies.sql
+supabase/add-avatar-storage-policies.sql
 ```
 
 ### 3. Create the avatars storage bucket
@@ -145,7 +157,7 @@ Open [http://localhost:3000](http://localhost:3000).
 npm test
 ```
 
-The parser has 7 tests covering: standard parse, variable color ordering, ignoring `Top X%`, total mismatch detection, missing date, wrong color count, and no percentage.
+The parser tests cover: standard parse, variable color ordering, ignoring `Top X%`, total mismatch detection, missing date, wrong color count, and no percentage line.
 
 ## UI Theme
 
@@ -160,4 +172,6 @@ Golf scorecard meets coffee shop:
 - **Colors as stable keys** — Coffee Golf uses the same 5 colors every day but changes hole order. Colors (not positions) are used for all per-hole comparisons and stats.
 - **One score per day** — enforced by a unique constraint at the DB level (`user_id + played_date`).
 - **RLS recursion fix** — `group_members` had a self-referencing SELECT policy that caused infinite recursion. Fixed via a `security definer` function (`is_group_member()`) that bypasses RLS when checking co-membership.
+- **Cross-user leaderboard** — the `rounds` table restricts SELECT to the owner's rows. The Record Book uses a `security definer` RPC function (`get_rounds_for_records()`) to safely return all rounds with only leaderboard-safe fields (no private data).
+- **Tournament status** — derived client-side from `start_date` / `end_date` rather than stored in the DB, so it's always accurate without any update jobs.
 - **No realtime** — all data is fetched on page load / user action. No Supabase Realtime subscriptions.
