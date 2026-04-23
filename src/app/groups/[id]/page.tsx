@@ -378,7 +378,6 @@ export default function GroupDetailPage() {
       {/* Tournaments */}
       {activeTab === "tournaments" && (
         <div className="space-y-3">
-          {isAdmin && (
             <Link
               href={`/groups/${groupId}/tournament/new`}
               className="block bg-green-800 hover:bg-green-900 text-white rounded-xl p-4 text-center transition-colors"
@@ -386,7 +385,6 @@ export default function GroupDetailPage() {
               <div className="text-xl mb-1">&#127942;</div>
               <div className="font-medium text-sm">Create Tournament</div>
             </Link>
-          )}
 
           {tournaments.length === 0 ? (
             <div className="text-center py-8 text-green-800/40 text-sm">
